@@ -46,7 +46,7 @@ To get started with this project, follow these steps:
    
 2. Install necessary R packages (if you don't have them already):
    ```R
-   install.packages(c("dplyr", "ggplot2", "RMarkdown", "tidyverse"))
+   install.packages(c("dplyr", "ggplot2", "tidyverse"))
 
 4. Download the required data (if necessary) and place it in the corresponding folder within the repository.
 
