@@ -69,7 +69,7 @@ You can view the case study **online** by visiting the following URL (GitHub Pag
 ---
 
 ## License
-This repository is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for more details.
+This repository is licensed under the **Creative Commons Zero v1.0 Universal**. See the [LICENSE](LICENSE) file for more details.
 
 ---
 
