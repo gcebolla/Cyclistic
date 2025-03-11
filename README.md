@@ -1,4 +1,4 @@
-# Cyclistic Bike-Share Data Analysis
+# Cyclistic Data Analysis
 
 ## Project Overview
 This repository contains a **data analysis case study** on the **Cyclistic** bike-share program, focusing on **customer usage patterns** and providing recommendations to convert **casual riders to member riders**. The analysis uses **SQL** for data cleaning, aggregation, and exploration, and **R** for analysis, visualization, and generating insights.
