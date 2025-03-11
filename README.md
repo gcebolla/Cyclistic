@@ -25,13 +25,14 @@ The Director of Marketing believes that increasing annual memberships is crucial
 
 The dataset includes **12 months of ride history** (Nov 2023 – Oct 2024) with millions of ride records. The data, provided by **Motivate International Inc.**, is publicly available under a data-sharing agreement: [Divvy Data](https://divvy-tripdata.s3.amazonaws.com/index.html).
 
+🔹 **Note:** This dataset does not contain personally identifiable information (PII).
 
 ---
 
 ## Technologies Used
 - **SQL**: Used for data cleaning and aggregation from raw data files.
 - **R**: Used for data analysis, statistical analysis, and data visualization.
-  - **RMarkdown**: For generating the report and final HTML output.
+- **RMarkdown**: For generating the report and final HTML output.
 - **ggplot2**: For creating visualizations in R.
 
 ---
@@ -58,7 +59,7 @@ To get started with this project, follow these steps:
 
 - Click the Knit button in RStudio or run the following command in R:
   ```R
-  rmarkdown::render("case_study.Rmd")
+  rmarkdown::render("Cyclistic.Rmd")
   
 4. This will generate the case_study_output.html file, which includes the analysis results and visualizations.
    
@@ -74,5 +75,6 @@ This repository is licensed under the **Creative Commons Zero v1.0 Universal**. 
 ---
 
 ## Acknowledgments
-- Data provided by **Cyclistic Bike-Share** program.
-- Special thanks to the creators of the tools and libraries used in this analysis: **R**, **ggplot2**, **SQL**, and **RMarkdown**.
+- Data provided by: Cyclistic Bike-Share (Divvy).
+- Tools used: R, ggplot2, SQL, RMarkdown.
+- Special thanks: To the creators of the open-source tools and libraries that made this analysis possible.
