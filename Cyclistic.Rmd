@@ -1,0 +1,2941 @@
+---
+title: "**Cyclistic Case Study**"
+subtitle: "Google Data Analysis Certification Capstone Project"
+author: "Gerard Cebolla Trullà"
+date: "2024-11-16"
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: true 
+  word_document: default
+  pdf_document:
+    latex_engine: xelatex
+---
+
+# **1: Introduction**
+
+## 1-1: Company Overview
+
+Cyclistic is a fictional bike-share company based in the city of Chicago.
+
+It offers access to a fleet of geotracked electric and classic bicycles that riders can unlock and return to any of the stations located throughout the city.
+
+Initially, Cyclistic focused on building awareness of its service by appealing to a very broad consumer segment primarily through flexible pricing options: single rides, day passes, and annual memberships.
+
+The user base consists of two primary segments: casual riders, who pay per ride, and member riders, who pay an annual membership fee.
+
+## 1-2: Business Problem
+
+The Director of Marketing at Cyclistic believes that the future of the company depends on increasing the number of annual memberships.
+
+She sees a strong opportunity to convert casual riders into members.
+
+According to the finance department, annual members are significantly more profitable than casual riders, making this conversion a high-priority initiative with the potential for strong returns on investment.
+
+## 1-3: Analysis Objective
+
+As part of this effort, I’m tasked with analyzing rider differences to uncover actionable insights and provide three recommendations for converting casual riders into members.
+
+## 1-4: Data Source
+
+Although Cyclistic is fictional, the data used for this case study is based on a real Chicago-based bike-share company called Divvy.
+
+Divvy's raw data is located [here.](https://divvy-tripdata.s3.amazonaws.com/index.html)
+
+The data contains no personally identifiable information from any rider and is made available by Motivate International Inc. under this [license.](https://divvybikes.com/data-license-agreement)
+
+I downloaded 12 months of ride history (November 2023 – October 2024), totaling 1.21 GB of data.
+
+Each of the 12 files contains hundreds of thousands of rows of data broken up into the following variables:
+
+-   **ride_id** - A unique identifier for each ride
+-   **rideable_type** - Type of bike used (classic or electric)
+-   **started_at** - Timestamp of ride's start
+-   **ended_at** - Timestamp of ride's end
+-   **start_station_name** - Name of the station where the ride began
+-   **start_station_id** - ID of the station where the ride began
+-   **end_station_name** - Name of the station where the ride ended
+-   **end_station_id** - ID of the station where the ride ended
+-   **start_lat** - Latitude of ride start station
+-   **start_lng** - Longitude of ride start station
+-   **end_lat** - Latitude of ride end station
+-   **end_lng** - Longitude of ride end station
+-   **member_casual** - Type of rider (casual or member)
+
+Due to the large dataset, I used SQL in BigQuery for exploration and cleaning, as it offers efficient querying for high-volume data.
+
+# **2: Cleaning & Aggregating in SQL**
+
+## 2-1: Cleaning
+
+### 2-1-1: Checking for Duplicates
+
+The first step was to ensure there were no duplicate entries in the data.
+
+Since each row has a unique key labeled **ride_id**, I found that the simplest way to check for duplicates was to compare the total row count with the count of *distinct* **ride_id**.
+
+For this example, I used the November 2023 raw data file ("cyclistic.202311_raw").
+
+#### Query 2-1-1:
+
+```{sql, eval = FALSE}
+SELECT
+  COUNT(*) AS all_rows,
+  COUNT(DISTINCT ride_id) AS all_ride_ids
+FROM
+  -- cyclistic.202311_raw
+```
+
+I ran this query on all 12 files and found no duplicate rides.
+
+### 2-1-2: Checking for NULL Values
+
+Next, I wanted to identify and address NULL values in the dataset.
+
+I created a query that pulls all NULL values from each column, again using the "cyclistic.202311_raw" file for testing.
+
+#### Query 2-1-2:
+
+```{sql, eval = FALSE}
+SELECT
+  *
+FROM
+  -- cyclistic.202311_raw
+WHERE
+  ride_id IS NULL
+  OR rideable_type IS NULL
+  OR started_at IS NULL
+  OR ended_at IS NULL
+  OR start_station_name IS NULL
+  OR start_station_id IS NULL
+  OR end_station_name IS NULL
+  OR end_station_id IS NULL
+  OR start_lat IS NULL
+  OR start_lng IS NULL
+  OR end_lat IS NULL
+  OR end_lng IS NULL
+  OR member_casual IS NULL
+```
+
+The query results revealed that NULLs were concentrated in the "location" columns: **start_station_name**, **start_station_id**, **end_station_name**, and **end_station_id**.
+
+While the latitudes and longitudes were available, some rides had NULL values for either the start or end locations, or sometimes both
+
+I was unable to determine the exact cause for these NULL values. It raised some questions:
+
+-   Are customers taking the bikes home or abandoning them?
+
+-   Is this part of a maintenance procedure by Cyclistic?
+
+I considered imputing the missing data using the latitude and longitude coordinates in an attempt to identify the nearest station.
+
+However, the majority of the rides were too far from the nearest station.
+
+Even a small difference of 0.01 decimal degrees in latitude or longitude translated to over a kilometer of distance away, making it impossible to accurately impute a station ID.
+
+Given the distance involved, I ultimately decided that the best course of action was to treat rides with missing station information as errors in data recording or a result of some other unaccounted for circumstance.
+
+### 2-1-3: Checking **rideable_type**
+
+After addressing the location data, I moved on to examine the **rideable_type** variable to ensure no irregularities existed.
+
+To investigate **rideable_type**, I ran the following query.
+
+#### Query 2.1.3:
+
+```{sql, eval = FALSE}
+SELECT
+  rideable_type,
+  COUNT(*) as ride_count
+FROM
+  -- cyclistic.202311_raw
+GROUP BY
+  rideable_type
+```
+
+The results revealed an additional **rideable_type** called "scooter" in the data for September.
+
+Since this category only appeared in that month and accounted for a small portion of the dataset, I decided to exclude it.
+
+This ensured the data remained consistent across all months, retaining only the classic and electric bike types.
+
+### 2-1-4: Checking **member_casual**
+
+After addressing **rideable_type**, I proceeded to examine **member_casual** for any inconsistencies.
+
+To ensure consistency in the **member_casual** column, I ran the following query.
+
+#### Query 2-1-4:
+
+```{sql, eval = FALSE}
+SELECT
+  member_casual,
+  COUNT(*) as ride_count
+FROM
+  -- cyclistic.202311_raw
+GROUP BY
+  member_casual
+```
+
+The query results confirmed that there were no irregularities in the member_casual column across all 12 files.
+
+### 2-1-5: Checking Ride Duration
+
+Next, I examined the **started_at** and **ended_at** timestamps to identify any instances where a ride ended *before* it started.
+
+Additionally, I decided to remove any rides that lasted less than 60 seconds.
+
+These short-duration rides could indicate various scenarios, such as:
+
+-   Users changing their minds after unlocking a bike
+
+-   Switching bikes shortly after starting a ride
+
+-   Maintenance or testing activities performed by Cyclistic
+
+To address these concerns, I ran the following query to select all rides lasting less than 60 seconds.
+
+#### Query 2-1-5:
+
+```{sql, eval = FALSE}
+SELECT
+  ride_length_sec,
+  COUNT(*) AS ride_count
+FROM (
+  SELECT
+    *,
+    TIMESTAMP_DIFF(ended_at, started_at, SECOND) AS ride_length_sec
+  FROM
+    -- cyclistic.202311_raw
+  )
+WHERE
+  ride_length_sec < 60
+GROUP BY
+  ride_length_sec
+ORDER BY
+  ride_length_sec ASC
+```
+
+### 2-1-6: Checking Month
+
+To ensure that each file contained only data from its respective month, I verified that the **started_at** timestamp matched the intended month of the dataset.
+
+I ran a query to extract the month from the **started_at** column and compared it with the expected month for each file:
+
+#### Query 2-1-6:
+
+```{sql, eval = FALSE}
+SELECT
+  EXTRACT(MONTH FROM started_at) AS month,
+  COUNT(*) AS ride_count
+FROM 
+  -- cyclistic.202311_raw
+GROUP BY
+  month
+```
+
+The results revealed that some files contained data from outside of their designated timeframe.
+
+### 2-1-7: Consolidated Cleaning Query
+
+To streamline the cleaning process and ensure that all necessary conditions were applied in one step, I decided to consolidate all of the previous individual cleaning queries into a single, comprehensive query.
+
+This query would filter out:
+
+-   NULL values in key columns such as **start_station_name**, **start_station_id**, **end_station_name**, and **end_station_id**.
+-   Rides that are less than 60 seconds, which I assumed could be errors or maintenance-related rides.
+-   Any entries in the **rideable_type** column that weren't 'classic_bike' or 'electric_bike', to ensure uniformity across the dataset.
+-   Any entries in the **member_casual** column that weren't either 'member' or 'casual'.
+-   Any rides that were outside the designated month based on the **started_at** timestamp.
+
+Using the following query made the data cleaning process more efficient and manageable.
+
+#### Query 2-1-7:
+
+```{sql, eval = FALSE}
+CREATE OR REPLACE TABLE -- cyclistic.202311_clean
+AS
+WITH raw_data AS (
+  SELECT
+    *,
+    EXTRACT (MONTH FROM started_at) AS raw_month
+  FROM
+    -- cyclistic.202311_raw
+  WHERE
+  start_station_name IS NOT NULL
+  AND start_station_id IS NOT NULL
+  AND end_station_name IS NOT NULL
+  AND end_station_id IS NOT NULL
+  AND rideable_type IN ('electric_bike', 'classic_bike')
+  AND member_casual IN ('member', 'casual')
+  AND TIMESTAMP_DIFF(ended_at, started_at, SECOND) >= 60
+),
+
+CTE_month_limit AS (
+  SELECT
+    raw_month AS month_limit,
+    COUNT(*) AS count_limit
+  FROM
+    raw_data
+  GROUP BY
+    raw_month
+  ORDER BY
+    count_limit DESC
+  LIMIT 1
+)
+
+SELECT
+   raw_data.* EXCEPT(raw_month)
+FROM
+  raw_data
+JOIN CTE_month_limit
+ON
+  raw_data.raw_month = CTE_month_limit.month_limit
+WHERE
+raw_data.ride_id NOT IN (
+    SELECT ride_id
+    FROM raw_data
+    GROUP BY ride_id
+    HAVING COUNT(ride_id) > 1
+)
+```
+
+## 2-2: Aggregating
+
+After cleaning each file, I reviewed the available variables to determine which would provide the best insights into user behavior.
+
+I focused on the most relevant data: user type, bike type, ride timing (month, day, time), and ride duration.
+
+Although the start and end locations were interesting, I didn't find them useful for converting casual users into members, so I chose to exclude them from the analysis
+
+The variables I kept for aggregation were:
+
+-   **month** - Month and Year of each ride
+-   **member_casual** - User type (member or casual)
+-   **rideable_type** - Bike type (classic or electric)
+-   **day_type** - Weekday or weekend
+-   **day_of_week** - The specific day of the week
+-   **time_of_day** - The time of day the ride occurred
+-   **ride count** - Total number of rides
+-   **ride_length** - Ride duration in seconds
+
+### 2-2-1: Formatting Month & Year
+
+To maintain consistency across the dataset, I created a new column that extracts the month and year from the **started_at** timestamp and combined them into a single formatted string.
+
+#### Query 2-2-1:
+
+```{sql, eval = FALSE}
+SELECT
+  FORMAT_TIMESTAMP("%B %Y", TIMESTAMP(started_at)) AS month
+FROM
+  -- cyclistic.202311_clean
+GROUP BY
+  month
+```
+
+### 2-2-2: Breaking Down timestamp
+
+To analyze user behavior by time, I extracted the day of the week from the **started_at** timestamp and categorized each ride as either a weekday or weekend ride.
+
+Additionally, I segmented the day into seven time periods to better capture patterns in ride activity throughout different parts of the day.
+
+#### Query 2-2-2:
+
+```{sql, eval = FALSE}
+SELECT
+  CASE
+    WHEN EXTRACT(DAYOFWEEK FROM started_at) IN (1,7) THEN 'weekend'
+    ELSE 'weekday'
+  END AS day_type,
+  EXTRACT(DAYOFWEEK FROM started_at) AS day_of_week,
+ CASE
+    WHEN EXTRACT(HOUR FROM started_at) >= 6 
+    AND EXTRACT(HOUR FROM started_at) < 9 THEN '6:00 AM - 8:59 AM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 9 
+    AND EXTRACT(HOUR FROM started_at) < 12 THEN '9:00 AM - 11:59 AM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 12 
+    AND EXTRACT(HOUR FROM started_at) < 15 THEN '12:00 PM - 2:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 15 
+    AND EXTRACT(HOUR FROM started_at) < 17 THEN '3:00 PM - 4:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 17 
+    AND EXTRACT(HOUR FROM started_at) < 20 THEN '5:00 PM - 7:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 20 
+    AND EXTRACT(HOUR FROM started_at) < 24 THEN '8:00 PM - 11:59 PM'
+    ELSE '12:00 AM - 5:59 AM'
+  END AS time_of_day
+FROM
+  -- cyclistic.202311_clean
+GROUP BY
+  day_type,
+  day_of_week,
+  time_of_day
+```
+
+### 2-2-3: Calculating & Segmenting Ride Duration
+
+To analyze typical ride durations, I grouped trips into seven time intervals based on minutes.
+
+For each segment, I calculated the ride count and summarized the total ride length in seconds by subtracting **started_at** from **ended_at**.
+
+#### Query 2-2-3: {#223}
+
+```{sql, eval = FALSE}
+SELECT
+ CASE
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) <= 10 THEN '0 - 10'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 11 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 21 THEN '11 - 20'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 21 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 31 THEN '21 - 30'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 31 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 41 THEN '31 - 40'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 41 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 51 THEN '41 - 50'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 51 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 61 THEN '51 - 60'
+    ELSE '60+'
+  END AS length_distro_min,
+  COUNT(*) AS ride_count,
+  SUM(TIMESTAMP_DIFF(ended_at, started_at, SECOND)) AS sum_ride_length_sec
+FROM 
+  -- cyclistic.202311_clean
+GROUP BY
+  length_distro_min
+```
+
+### 2-2-4: Creating All Combinations Table
+
+When I consolidated the previous queries into a single one, I encountered an issue.
+
+I expected 1,372 rows, assuming every category contained at least one ride.
+
+However, certain months lacked rides in specific segments, resulting in missing rows.
+
+To address this, I created a Cartesian product of all possible category combinations.
+
+This ensured that every category was represented and replaced NULL values with "0" where necessary.
+
+I used the clean November 2023 dataset ("cyclistic.202311_clean") as a reference for the template.
+
+#### Query 2-2-4:
+
+```{sql, eval = FALSE}
+CREATE OR REPLACE TABLE -- cyclistic.all_combinations AS
+WITH data AS (
+  SELECT * FROM --cyclistic.202311_clean
+)
+SELECT
+  member_casual,
+  rideable_type,
+  day_of_week,
+  time_of_day,
+  length_distro_min
+FROM 
+  (SELECT DISTINCT member_casual FROM data),
+  (SELECT DISTINCT rideable_type FROM data),
+  (SELECT DISTINCT EXTRACT(DAYOFWEEK FROM started_at) AS day_of_week FROM --cyclistic.202311_clean),
+  (SELECT DISTINCT CASE
+    WHEN EXTRACT(HOUR FROM started_at) >= 6 
+    AND EXTRACT(HOUR FROM started_at) < 9 THEN '6:00 AM - 8:59 AM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 9 
+    AND EXTRACT(HOUR FROM started_at) < 12 THEN '9:00 AM - 11:59 AM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 12 
+    AND EXTRACT(HOUR FROM started_at) < 15 THEN '12:00 PM - 2:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 15 
+    AND EXTRACT(HOUR FROM started_at) < 17 THEN '3:00 PM - 4:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 17 
+    AND EXTRACT(HOUR FROM started_at) < 20 THEN '5:00 PM - 7:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 20 
+    AND EXTRACT(HOUR FROM started_at) < 24 THEN '8:00 PM - 11:59 PM'
+    ELSE '12:00 AM - 5:59 AM'
+  END AS time_of_day FROM data),
+  (SELECT DISTINCT CASE
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) <= 10 THEN '0 - 10'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 11 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 21 THEN '11 - 20'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 21 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 31 THEN '21 - 30'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 31 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 41 THEN '31 - 40'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 41 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 51 THEN '41 - 50'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 51 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 61 THEN '51 - 60'
+    ELSE '60+'
+  END AS length_distro_min FROM data)
+```
+
+### 2-2-5: Creating Aggregate Table
+
+To create the final aggregation query, I combined the previous queries and joined them with the **all_combinations** table.
+
+This query extracts the month, year, and weekday from the **started_at** timestamp, segments the data by time and ride duration, counts the number of rides, and calculates the total ride duration in seconds.
+
+Additionally, it joins with the **all_combinations** table ("cyclistic.all_combinations") and uses the COALESCE function to replace any NULL values with "0".
+
+After running the query, I created 12 aggregated data files, each containing 1,372 rows.
+
+#### Query 2-2-5:
+
+```{sql, eval = FALSE}
+CREATE OR REPLACE TABLE -- cyclistic.202311_aggregate
+AS
+WITH current_data AS 
+(
+SELECT
+  FORMAT_TIMESTAMP("%B %Y", TIMESTAMP(started_at)) AS month,
+  member_casual,
+  rideable_type,
+  CASE
+    WHEN EXTRACT(DAYOFWEEK FROM started_at) IN (1,7) THEN 'weekend'
+    ELSE 'weekday'
+  END AS day_type,
+  EXTRACT(DAYOFWEEK FROM started_at) AS day_of_week,
+  CASE
+    WHEN EXTRACT(HOUR FROM started_at) >= 6 
+    AND EXTRACT(HOUR FROM started_at) < 9 THEN '6:00 AM - 8:59 AM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 9 
+    AND EXTRACT(HOUR FROM started_at) < 12 THEN '9:00 AM - 11:59 AM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 12 
+    AND EXTRACT(HOUR FROM started_at) < 15 THEN '12:00 PM - 2:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 15 
+    AND EXTRACT(HOUR FROM started_at) < 17 THEN '3:00 PM - 4:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 17 
+    AND EXTRACT(HOUR FROM started_at) < 20 THEN '5:00 PM - 7:59 PM'
+    WHEN EXTRACT(HOUR FROM started_at) >= 20 
+    AND EXTRACT(HOUR FROM started_at) < 24 THEN '8:00 PM - 11:59 PM'
+    ELSE '12:00 AM - 5:59 AM'
+  END AS time_of_day,
+  CASE
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) <= 10 THEN '0 - 10'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 11 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 21 THEN '11 - 20'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 21 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 31 THEN '21 - 30'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 31 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 41 THEN '31 - 40'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 41 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 51 THEN '41 - 50'
+    WHEN TIMESTAMP_DIFF(ended_at, started_at, MINUTE) >= 51 
+    AND TIMESTAMP_DIFF(ended_at, started_at, MINUTE) < 61 THEN '51 - 60'
+    ELSE '60+'
+  END AS length_distro_min,
+  COUNT(*) AS ride_count,
+  SUM(TIMESTAMP_DIFF(ended_at, started_at, SECOND)) AS sum_ride_length_sec
+FROM 
+  --cyclistic.202311_clean
+GROUP BY
+  month,
+  member_casual,
+  rideable_type,
+  day_type,
+  day_of_week,
+  time_of_day,
+  length_distro_min
+)
+SELECT
+  (SELECT month from current_data LIMIT 1) AS month,
+  all_combinations.member_casual,
+  all_combinations.rideable_type,
+  CASE 
+    WHEN all_combinations.day_of_week IN (1,7) THEN 'weekend'
+    ELSE 'weekday'
+  END AS day_type,
+  all_combinations.day_of_week,
+  all_combinations.time_of_day,
+  all_combinations.length_distro_min, 
+  COALESCE(current_data.ride_count, 0) AS ride_count,
+  COALESCE(current_data.sum_ride_length_sec, 0) AS sum_ride_length_sec
+FROM 
+  -- cyclistic.all_combinations
+LEFT JOIN 
+  current_data
+  ON  all_combinations.member_casual = current_data.member_casual
+  AND all_combinations.rideable_type = current_data.rideable_type
+  AND all_combinations.day_of_week = current_data.day_of_week
+  AND all_combinations.time_of_day = current_data.time_of_day
+  AND all_combinations.length_distro_min = current_data.length_distro_min
+```
+
+### 2-2-6: Combining All Tables
+
+Afterward, I combined all 12 aggregated files into a single unified table ("cyclistic.cyclistic_12") and transferred it to R for further analysis and visualization.
+
+#### Query 2-2-6:
+
+```{sql, eval = FALSE}
+CREATE TABLE -- cyclistic.cyclistic_12
+AS
+SELECT
+  *
+FROM
+  -- cyclistic.202311_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202312_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202401_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202402_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202403_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202404_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202405_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202406_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202407_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202408_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202409_aggregate
+
+UNION ALL
+SELECT
+  *
+FROM
+  -- cyclistic.202410_aggregate
+```
+
+# **3: Analysis & Plotting in R**
+
+## 3-1: Importing Data and Creating Factors
+
+### 3-1-1: Loading Libraries
+
+To start, I loaded the following libraries for analysis and visualization:
+
+-   **tidyverse**: For data manipulation and visualization.
+-   **RColorBrewer**: For using color palettes in visualizations.
+-   **gridExtra**: For arranging multiple visualizations in a grid.
+
+#### Code Chunk 3-1-1:
+
+```{r}
+libs <- c("tidyverse", "RColorBrewer", "gridExtra")
+sapply(libs, library, character.only = T, logical.return = T, 
+       quietly = T, warn.conflicts = F)
+```
+
+### 3-1-2: Setting Working Directory
+
+Next, I set up the working directory to ensure that the necessary files could be easily accessed and saved.
+
+#### Code Chunk 3-1-2:
+
+```{r, eval = FALSE}
+setwd("~/R/Cyclistic")       
+```
+
+### 3-1-3: Loading Data
+
+I then loaded the previous CSV file I made in SQL.
+
+#### Code Chunk 3-1-3:
+
+```{r}
+cyclistic <- read.csv("cyclistic_12.csv")
+```
+
+### 3-1-4: Creating Factor Levels for Plotting
+
+To ensure consistency in column ordering when plotting, I converted certain columns into factors and explicitly defined their levels.
+
+I then printed out each column to verify that the new order was correctly applied.
+
+#### Code Chunk 3-1-4:
+
+```{r}
+cyclistic <- cyclistic %>%
+  mutate(
+    month = factor(
+      month,
+      levels = c(
+        'November 2023',
+        'December 2023',
+        'January 2024',
+        'February 2024',
+        'March 2024',
+        'April 2024',
+        'May 2024',
+        'June 2024',
+        'July 2024',
+        'August 2024',
+        'September 2024',
+        'October 2024'
+      )
+    ),
+    member_casual = factor(member_casual, levels = c("member", "casual")),
+    rideable_type = factor(rideable_type, levels = c("classic_bike", "electric_bike")),
+    day_type = factor(day_type, levels = c("weekday", "weekend")),
+    day_of_week = factor(day_of_week, levels = c("1", "2", "3", "4", "5", "6", "7")),
+    time_of_day = factor(
+      time_of_day,
+      levels = c(
+        "6:00 AM - 8:59 AM",
+        "9:00 AM - 11:59 AM",
+        "12:00 PM - 2:59 PM",
+        "3:00 PM - 4:59 PM",
+        "5:00 PM - 7:59 PM",
+        "8:00 PM - 11:59 PM",
+        "12:00 AM - 5:59 AM"
+      )
+    ),
+    length_distro_min = factor(
+      length_distro_min,
+      levels = c("0 - 10", "11 - 20", "21 - 30", "31 - 40", "41 - 50", "51 - 60", "60+")
+    )
+  )
+
+sapply(cyclistic, function(x)
+  if (is.factor(x))
+    levels(x)
+  else
+    NULL)
+```
+
+## 3-2: Total Rides Analysis
+
+With the libraries installed, the data imported, and the factors defined, I was ready to begin analyzing and visualizing the data.
+
+### 3-2-1: Total Rides per Month
+
+I began by comparing the total number of rides taken by casual and member riders over the past 12 months.
+
+To do this, I created a tibble summarizing the total rides for each rider type over the last year.
+
+I then visualized the data using a line graph to track changes in total rides over time.
+
+#### Code Chunk 3-2-1-1:
+
+```{r}
+cyclistic_total_rides_by_month <- cyclistic %>%
+  group_by(month, member_casual) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop")
+
+print(cyclistic_total_rides_by_month)
+```
+
+#### Code Chunk 3-2-1-2: {#3212}
+
+```{r Chart-3.2.1.2, fig.align= "center", fig.width = 8, fig.height = 4.5}
+ggplot(
+  cyclistic_total_rides_by_month,
+  aes(
+    x = month,
+    y = total_rides,
+    linetype = member_casual,
+    color = member_casual,
+    group = member_casual
+  )
+) +
+  geom_line(linewidth = 1) +
+  scale_linetype_manual(values = c("member" = "solid", "casual" = "dashed")) +
+  geom_point(size = 3) +
+  scale_y_continuous(
+    label = function(x)
+      paste0(x / 1000, "k"),
+    breaks = seq(0, 400000, by = 50000),
+    expand = expansion(mult = c(0.075, 0.15))
+  ) +
+  scale_x_discrete(
+    label = function(x)
+      tools::toTitleCase(x)
+  ) +
+  labs(
+    x = "Month",
+    y = "Rides (Thousands)",
+    title = "Total Rides per Month",
+    subtitle = "Comparing monthly ride totals for member and casual riders over the last 12 months",
+    color = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  geom_label(
+    aes(label = scales::comma(total_rides)),
+    vjust = -.5,
+    color = "black",
+    size = 3,
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 16, face = "bold")
+    ) +
+  scale_color_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  ) +
+  guides(linetype = "none")
+```
+
+From the first chart, it's evident that the ride count trends for both casual and member riders follow a similar pattern.
+
+Both rider types experience a dramatic dip in rides during the winter months, followed by a gradual increase in the spring.
+
+Ride counts peak in the summer before slowly decreasing as winter approaches.
+
+While their seasonal behavior aligns, the key difference lies in the volume of rides: members consistently use the service more than casual users.
+
+Even during the summer, member rides significantly outnumber those of casual riders.
+
+Given these patterns, I decided to further explore the monthly changes.
+
+### 3-2-2: Delta of Rides per Month
+
+To better understand how each rider type's usage changed month to month, I calculated the rate of change (delta).
+
+I created a tibble showing the delta of total rides for both rider types and visualized the data using paired bar graphs for comparison.
+
+#### Code Chunk 3-2-2-1:
+
+```{r}
+cyclistic_total_rides_by_month_delta <- cyclistic %>%
+  group_by(month, member_casual) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop") %>%
+  group_by(member_casual) %>%
+  mutate(delta_rides = total_rides - lag(total_rides)) %>% 
+  filter(!is.na(delta_rides))
+
+print(cyclistic_total_rides_by_month_delta)
+```
+
+#### Code Chunk 3-2-2-2: {#3222}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(
+  cyclistic_total_rides_by_month_delta,
+  aes(
+    x = delta_rides,
+    y = month,
+    fill = member_casual,
+    group = member_casual
+  )
+) +
+  geom_bar (stat = "identity", position = "dodge") +
+  scale_x_continuous(
+    label = function(x)
+      paste0(x / 1000, "k"),
+    breaks = seq(-100000, 100000, by = 25000)
+  ) +
+  scale_y_discrete(
+    label = function(x)
+      tools::toTitleCase(x),
+    limits = rev(levels(cyclistic_total_rides_by_month_delta$month))
+  ) +
+  labs(
+    x = "Rides (Thousands)",
+    y = "Month",
+    title = "Delta of Total Rides per Month",
+    subtitle = "Comparing the month-to-month change in total rides for member and casual riders over the last 12 months",
+    fill = "Rider Type",
+    caption = "Note: Delta is unavailable for November 2023 due to lack of prior data.\nSource: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  geom_label(
+    aes(label = scales::comma(delta_rides),
+        hjust = ifelse(delta_rides < 0, 1.05, -0.05)
+        ),
+    color = "black",
+    size = 3,
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold")
+    ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  ) +
+guides(linetype = "none") +
+geom_vline(xintercept = 0, linetype = "dotted", color = "black", linewidth = 1)
+```
+
+From the chart, it appears that member riders are more sensitive to colder weather, with the largest drop in total rides occurring between November 2023 and December 2023—a decrease of 71,256 rides.
+
+On the other hand, casual riders show a marked increase in ride counts during the warmer months, with the most significant surge occurring between April 2024 and May 2024, adding 72,118 rides.
+
+However, comparing the deltas using absolute values provided only limited insight.
+
+In a later section, I will revisit this data converted to percentage form to better understand how seasonality impacts each rider type.
+
+### 3-2-3: Total Rides per Day
+
+To gain more granular insights, I decided to break the data down further by analyzing the total rides per day.
+
+I created a tibble that calculates the total rides for each day and added a column to highlight the busiest day of the week for each month.
+
+Next, I visualized the data using paired bar graphs to compare the total rides per day of the week for both casual and member riders across the last 12 months.
+
+#### Code Chunk 3-2-3-1:
+
+```{r}
+cyclistic_total_rides_per_day_by_month <- cyclistic %>%
+  group_by(member_casual, month, day_of_week) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop") %>%
+  group_by(month, member_casual) %>%
+  mutate(busiest_day_of_month = ifelse(total_rides == max(total_rides), TRUE, FALSE)) %>%
+  ungroup()
+
+print(cyclistic_total_rides_per_day_by_month)
+```
+
+#### Code Chunk 3-2-3-2:
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_total_rides_per_day_by_month,
+       aes(x = day_of_week, y = total_rides, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+    scale_x_discrete(
+    limits = levels(cyclistic_total_rides_per_day_by_month$day_of_week),
+    labels = c(
+      "1" = "Sun",
+      "2" = "Mon",
+      "3" = "Tue",
+      "4" = "Wed",
+      "5" = "Thu",
+      "6" = "Fri",
+      "7" = "Sat"
+    )
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0)),
+    label = function(x)
+      paste0(x / 1000, "k"),
+    breaks = seq(0, 100000, by = 10000)
+  ) +
+  facet_wrap(~ month, ncol = 4, scales = "free_x") +
+  labs(
+    title = "Total Rides per Day of the Week",
+    subtitle = "Comparing total rides per day for member and casual riders for each of the last 12 months",
+    x = "Day of the Week",
+    y = "Rides (Thousands)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(),
+    strip.text = element_text(size = 12),
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+Visually, there appears to be an inverse relationship between member and casual riders.
+
+Member rides tend to peak in the middle of the week, while casual rides are at their lowest during this time.
+
+On the other hand, casual riders typically see their peak on weekends, and during the summer months, their ride counts even surpass those of members.
+
+To present this data more clearly, I decided to visualize it as a heat map and highlight the busiest day of the week.
+
+#### Code Chunk 3-2-3-3: {#3233}
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 4.5}
+ggplot(
+  cyclistic_total_rides_per_day_by_month,
+  aes(
+    x = month,
+    y = day_of_week,
+    fill = member_casual,
+    alpha = total_rides
+  )
+) +
+  geom_tile(color = "white", linewidth = 0.2) +
+  geom_label(
+    label = ifelse(cyclistic_total_rides_per_day_by_month$busiest_day_of_month, "✓", ""),
+    color = "black",
+    fill = NA,
+    label.size = 0,
+    size = 5,
+    hjust = 0.5,
+    vjust = 0.5
+  ) +
+  labs(
+    title = "Total Rides per Day of the Week",
+    subtitle = "Highlighting the busiest day of each month for casual and member riders",
+    x = "Month",
+    y = "Day of the Week",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  facet_wrap( ~ member_casual, ncol = 2, labeller = labeller(member_casual = tools::toTitleCase)) +
+  scale_fill_manual(values = c("member" = "#66C2A5", "casual" = "#FC8D62"),
+                    guide = "none") +
+  scale_alpha_continuous(range = c(0.05, 1), name = "Total Rides") +
+  scale_y_discrete(
+    limits = rev(levels(cyclistic_total_rides_per_day_by_month$day_of_week)),
+    labels = c(
+      "1" = "Sun",
+      "2" = "Mon",
+      "3" = "Tue",
+      "4" = "Wed",
+      "5" = "Thu",
+      "6" = "Fri",
+      "7" = "Sat"
+    )
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text( size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    legend.position = "none"
+  )
+```
+
+The heatmap reveals that member riders are most active on weekdays, with Wednesday typically being their busiest day.
+
+In contrast, casual riders tend to be more active on weekends, with Saturday usually marking their peak day.
+
+### 3-2-4: Total Rides per Day (LTM)
+
+To gain a broader understanding of total rides per day for each rider type over the last 12 months (LTM), I summarized the data in a tibble.
+
+I then visualized this data by creating a paired bar chart to compare the total rides per day for casual and member riders over this period.
+
+#### Code Chunk 3-2-4-1:
+
+```{r}
+cyclistic_total_rides_per_day_LTM <- cyclistic %>%
+  group_by(day_of_week, member_casual) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop")
+
+print(cyclistic_total_rides_per_day_LTM)
+```
+
+#### Code Chunk 3-2-4-2: {#3242}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_total_rides_per_day_LTM,
+       aes(x = day_of_week, y = total_rides, fill = member_casual, group = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Total Rides per Day of the Week",
+    subtitle = "Comparing total rides per day of the week for member and casual riders in the last 12 months",
+    x = "Day of the Week",
+    y = "Rides (Thousands)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  scale_x_discrete(
+    limits = levels(cyclistic_total_rides_per_day_LTM$day_of_week),
+    labels = c(
+      "1" = "Sun",
+      "2" = "Mon",
+      "3" = "Tue",
+      "4" = "Wed",
+      "5" = "Thu",
+      "6" = "Fri",
+      "7" = "Sat"
+    )
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.05)),
+    label = function(x)
+      paste0(x / 1000, "k"),
+    breaks = seq(0, 700000, by = 50000)
+  ) +
+  geom_label(
+    aes(label = scales::comma(total_rides)),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+Over the last 12 months, the chart visually highlights an inverse relationship between member and casual riders.
+
+Member rides typically peaked in the middle of the week, while casual rides were lowest during this time.
+
+In contrast, casual riders saw their peak on weekends.
+
+This data will be revisited later, converted to percentages, to better understand how each day contributes to each rider's total.
+
+### 3-2-5: Total Rides per Type of Day
+
+Next, I summed up all rides for each rider type and split them into weekend and weekday categories to explore how the total rides break down.
+
+Once again, I created a tibble summarizing the data, which I then visualized using a paired bar graph.
+
+#### Code Chunk 3-2-5-1:
+
+```{r}
+cyclistic_total_rides_per_day_type_LTM <- cyclistic %>%
+  group_by(member_casual, day_type) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop")
+
+print(cyclistic_total_rides_per_day_type_LTM)
+```
+
+#### Code Chunk 3-2-5-2: {#3252}
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 6}
+ggplot(cyclistic_total_rides_per_day_type_LTM,
+       aes(x = day_type, y = total_rides, fill = member_casual, group = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap( ~day_type, ncol = 4, scales = "free_x", labeller = labeller(day_type = tools::toTitleCase)) +
+  labs(
+    title = "Total Rides per Type of Day",
+    subtitle = "Comparing total rides on weekdays and weekends for member and casual riders in the last 12 months",
+    x = "Day Type",
+    y = "Rides (Thousands)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  scale_y_continuous(
+    label = function(x)
+      paste0(x / 1000, "k"),
+    breaks = seq(0, 2100000, by = 500000),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_x_discrete(
+    labels = function(x)
+      tools::toTitleCase(x)
+  ) +
+  geom_label(
+    aes(label = scales::comma(total_rides)),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_blank(),
+    legend.position = "right",
+    plot.title = element_text( size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+Though this plot might seem superfluous at first glance, as weekday totals will obviously outnumber the weekend totals, it’s interesting to note the differences in ride counts between member and casual riders on weekdays and weekends.
+
+I’ll revisit this data later, converting it to percentages, to gain a deeper understanding of how each day type contributes to each rider’s total.
+
+### 3-2-6: Total Rides per Time of Day
+
+Next, I analyzed total rides by rider type across seven time-of-day segments for each of the last 12 months.
+
+#### Code Chunk 3-2-6-1:
+
+```{r}
+cyclistic_total_rides_per_time_of_day_by_month <- cyclistic %>%
+  group_by(member_casual, month, time_of_day) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop") %>%
+  ungroup()
+
+print(cyclistic_total_rides_per_time_of_day_by_month)
+```
+
+#### Code Chunk 3-2-6-2:
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_total_rides_per_time_of_day_by_month,
+       aes(x = time_of_day, y = total_rides, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)),
+    label = function(x)
+      paste0(x / 1000, "k"),
+  ) +
+  facet_wrap( ~ month, ncol = 4, scales = "free_x") +
+  labs(
+    title = "Total Rides per Time of Day",
+    subtitle = "Comparing total rides across time segments for member and casual riders for each of the last 12 months.",
+    x = "Time of Day",
+    y = "Rides (Thousands)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12),
+    legend.position = "top",
+    plot.title = element_text( size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+For member riders, the 5:00 PM - 7:59 PM timeframe appears to be the busiest, even during the colder months.
+
+In contrast, casual riders are less active in the colder months, but as summer approaches, the 12:00 PM - 2:59 PM and 5:00 PM - 7:59 PM time segments become their busiest.
+
+### 3-2-7: Total Rides per Time of Day (LTM)
+
+Next, I summarized the total rides across all months into a single paired bar graph to analyze the overall distribution of rides per time of day.
+
+#### Code Chunk 3-2-7-1:
+
+```{r}
+cyclistic_total_rides_per_time_of_day_LTM <- cyclistic %>%
+  group_by(member_casual, time_of_day) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop")
+
+print(cyclistic_total_rides_per_time_of_day_LTM)
+```
+
+#### Code Chunk 3-2-7-2: {#3272}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_total_rides_per_time_of_day_LTM, aes(x = time_of_day, y = total_rides, fill = member_casual, group = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Total Rides per Time of Day",
+    subtitle = "Comparing total rides per time of day for member and casual riders in the last 12 months",
+    x = "Time of Day",
+    y = "Rides (Thousands)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  scale_y_continuous(
+    label = function(x)
+      paste0(x / 1000, "k"),
+    breaks = seq(0, 700000, by = 100000),
+    expand = expansion(mult = c(0, 0.10))
+  ) +
+  geom_label(
+    aes(label = scales::comma(total_rides)),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_blank(),
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+Here, the peaks for both member and casual riders are clearly visible.
+
+As expected, the 5:00 PM - 7:59 PM segment was the busiest for members.
+
+Casual riders also peaked during the same time frame, with the 12:00 PM - 2:59 PM segment coming in as a close second.
+
+## 3-3: Proportional Total Rides Analysis
+
+To gain a deeper understanding of the data, I decided to revisit it proportionally.
+
+By examining the data in percentages, I can better understand the relative contribution of each month and rider type to the overall activity.
+
+### 3-3-1: Proportional Total Rides per Month
+
+Next, I revisited the total ride data from chart [**3-2-1-2**](#3212) and converted it into percentages to see how each month contributes to the overall activity for each rider type over the last 12 months.
+
+#### Code Chunk 3-3-1-1:
+
+```{r}
+cyclistic_total_rides_by_month_percentage <- cyclistic %>%
+  group_by(member_casual) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(month, member_casual) %>%
+  summarize(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop")
+
+print(cyclistic_total_rides_by_month_percentage)
+```
+
+#### Code Chunk 3-3-1-2: {#3312}
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 4.5}
+ggplot(
+  cyclistic_total_rides_by_month_percentage,
+  aes(
+    x = month,
+    y = percentage,
+    linetype = member_casual,
+    color = member_casual,
+    group = member_casual
+  )
+) +
+  geom_line(linewidth = 1) +
+  scale_linetype_manual(values = c("member" = "solid", "casual" = "dashed")) +
+  geom_point(size = 3) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.20))) +
+  scale_x_discrete(
+    label = function(x)
+      tools::toTitleCase(x)
+  ) +
+  labs(
+    x = "Month",
+    y = "Rides (%)",
+    title = "Total Rides",
+    subtitle = "Comparing the contribution of total rides per month for casual and member riders over the last 12 months",
+    color = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+   geom_label(
+      aes(label = paste0(round(percentage, 1), "%")),
+      vjust = -.25,
+      color = "black",
+      size = 3,
+      fill = "white",
+      label.size = 0,
+      alpha = 0.6
+      ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 16, face = "bold")
+    ) +
+  scale_color_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  ) +
+  guides(linetype = "none")
+```
+
+The months of December and January represent the lowest periods of activity for casual riders, contributing only 2.4% and 1.2% of all casual rides, respectively.
+
+The casual rider trend shows that 21.2% of all rides occur from November 2023 to April 2024, while a significant 78.8% of rides happen between May 2024 and October 2024.
+
+For member riders, 34.7% of all rides occur from November 2023 to April 2024, with the remaining 65.3% happening between May 2024 and October 2024.
+
+It seems that while both casual and member riders exhibit similar behavior across the year, casual riders experience more significant drops and surges in activity during the colder and warmer months.
+
+### 3-3-2: Delta of Rides per Month (Percentage)
+
+I revisited the chart I made in [**3-2-2-2**](#3222) and converted it to percentages changes.
+
+By calculating the delta of total rides per month and expressing it as a percentage, I was able to assess how the number of rides changed from one month to the next for both casual and member riders.
+
+Using percentages makes it easier to interpret and compare these changes across the last 12 months.
+
+#### Code Chunk 3-3-2-1:
+
+```{r}
+cyclistic_total_rides_by_month_delta_percentage <- cyclistic %>%
+  group_by(month, member_casual) %>%
+  summarize(total_rides = sum(ride_count), .groups = "drop") %>%
+  group_by(member_casual) %>%
+  mutate(delta_rides = total_rides - lag(total_rides)) %>%
+  mutate(delta_percentage = (delta_rides/lag(total_rides)) * 100) %>%
+  filter(!is.na(delta_percentage))
+
+print(cyclistic_total_rides_by_month_delta_percentage)
+```
+
+#### Code Chunk 3-3-2-2: {#3322}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(
+  cyclistic_total_rides_by_month_delta_percentage,
+  aes(
+    x = delta_percentage,
+    y = month,
+    fill = member_casual,
+    group = member_casual
+  )
+) +
+  geom_bar (stat = "identity", position = "dodge") +
+  scale_x_continuous(limits = c(-125, 125)) +
+  scale_y_discrete(
+    label = function(x)
+      tools::toTitleCase(x),
+    limits = rev(levels(cyclistic_total_rides_by_month_delta_percentage$month))
+  ) +
+  labs(
+    x = "Rides (%)",
+    y = "Month",
+    title = "Delta of Total Rides per Month",
+    subtitle = "Comparing the month-to-month percentage change in total rides for member and casual riders over the last 12 months",
+    fill = "Rider Type",
+    caption = "Note: Delta is unavailable for November 2023 due to lack of prior data.\nSource: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  geom_label(
+    aes(label = paste0(round(delta_percentage, 1), "%"),
+        hjust = ifelse(delta_percentage < 0, 1.05, -0.05)
+        ),
+    color = "black",
+    size = 3,
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold")
+    ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  ) +
+guides(linetype = "none") +
+geom_vline(xintercept = 0, linetype = "dotted", color = "black", linewidth = 1)
+```
+
+In comparison to the absolute values shown in chart [**3-2-2-2**](#3222), this proportional chart reveals that casual riders experienced the most significant fluctuations in usage over the last 12 months.
+
+The largest drops in rides occurred in December 2023 and January 2024, with month-to-month decreases of 49.1% and 51.9%, respectively.
+
+The most notable increases in rides took place in February 2024 and again in May 2024, with rises of 116.5% and 78.2%, respectively.
+
+The proportional rate of change between months appears more volatile for casual riders compared to member riders, suggesting that casual riders may be more sensitive to seasonality.
+
+In contrast, member riders' proportional changes seem less dramatic.
+
+To quantify this variability, I calculated the mean, standard deviation, and coefficient of variation (CV) of the percentage deltas for both rider types.
+
+#### Code Chunk Code Chunk 3-3-2-3: {#3323}
+
+```{r}
+cyclistic_total_rides_by_LTM_delta_mean_sd_cv <- cyclistic_total_rides_by_month_delta_percentage %>%
+  group_by(member_casual) %>%
+  summarise(
+    mean_delta = mean(delta_percentage, na.rm = TRUE),
+    sd_delta = sd(delta_percentage, na.rm = TRUE)
+  ) %>%
+  mutate(
+    cv_delta = sd_delta / mean_delta
+  )
+
+print(cyclistic_total_rides_by_LTM_delta_mean_sd_cv)
+```
+
+On average, casual riders saw a 19.09% month-to-month change, while member riders saw a 6.31% change, confirming that casual riders experience larger fluctuations in absolute terms.
+
+However, the month-to-month variability (standard deviation) is also much higher for casual riders (53.56%) compared to members (25.54%), indicating that casual riders' usage is more inconsistent.
+
+Despite this, casual riders have a lower coefficient of variation (CV = 2.81) compared to members (CV = 4.05).
+
+Since CV measures variability relative to the mean, this suggests that casual riders are actually more predictable in their month-to-month fluctuations than members.
+
+In other words, while casual riders experience larger absolute swings, their proportional rate of change is more stable than that of member riders.
+
+### 3-3-3: Total Rides per Day (LTM Percentage)
+
+Next, I revisited the data from [**3.2.4.2**](#3242) and converted total rides into percentages to analyze how each day of the week contributed to the overall ride volume for members and casual riders.
+
+To achieve this, I created a tibble that calculates the percentage of total rides each day represents for each rider type.
+
+Then, I visualized the data using a paired bar graph to compare daily ride distributions between the two groups.
+
+#### Code Chunk 3-3-3-1:
+
+```{r}
+cyclistic_total_rides_per_day_LTM_percentage <- cyclistic_total_rides_per_day_LTM %>%
+  group_by(member_casual) %>%
+  reframe(
+    day_of_week = day_of_week,
+    total_rides = total_rides,
+    day_total_rides = sum(total_rides)
+  ) %>%
+  mutate(
+    percentage = (total_rides / day_total_rides) * 100
+  )
+
+print(cyclistic_total_rides_per_day_LTM_percentage)
+```
+
+#### Code Chunk 3.3.3.2: {#3332}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_total_rides_per_day_LTM_percentage,
+       aes(x = day_of_week, y = percentage, fill = member_casual, group = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Total Rides per Day of the Week",
+    subtitle = "Comparing the percentage of total rides per day for member and casual riders in the last 12 months",
+    x = "Day of the Week",
+    y = "Rides (%)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  scale_x_discrete(
+    limits = levels(cyclistic_total_rides_per_day_LTM_percentage$day_of_week),
+    labels = c(
+      "1" = "Sun",
+      "2" = "Mon",
+      "3" = "Tue",
+      "4" = "Wed",
+      "5" = "Thu",
+      "6" = "Fri",
+      "7" = "Sat"
+    )
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.05)),
+  ) +
+  geom_label(
+    aes(label = paste0(round(percentage, 1), "%") ),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+The chart shows that the distribution of rides over the workweek for member riders remains steady, ranging from 13.9% to 16.9%, with a noticeable drop on the weekends.
+
+For casual riders, weekday ride contributions fluctuate between 10.6% and 12.5%, with a slight increase on Fridays to 14.6%.
+
+The weekend sees a significant rise, with 20.9% of rides on Saturdays and 17.3% on Sundays.
+
+In total, 38.2% of all casual rides occur on weekends.
+
+### 3-3-4: Total Rides per Time of Day (LTM Percentage)
+
+I revisited the total rides per time of day data from chart [**3-2-7-2**](#3272) and converted it into percentages to examine the proportional contribution of each of the seven time segments for both casual and member riders.
+
+#### Code Chunk 3-3-4-1:
+
+```{r}
+cyclistic_total_rides_per_time_of_day_LTM_percentage <- cyclistic_total_rides_per_time_of_day_LTM %>%
+  group_by(member_casual) %>%
+  reframe(
+    time_of_day = time_of_day,
+    total_rides = total_rides,
+    day_total_rides = sum(total_rides)
+  ) %>%
+  mutate(
+    percentage = (total_rides / day_total_rides) * 100
+  )
+
+print(cyclistic_total_rides_per_time_of_day_LTM_percentage)
+```
+
+#### Code Chunk 3.3.4.2: {#3342}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_total_rides_per_time_of_day_LTM_percentage, aes(x = time_of_day, y = percentage, fill = member_casual, group = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Total Rides per Time of Day",
+    subtitle = "Comparing the percentage of total rides per time of day for member and casual riders in the last 12 months",
+    x = "Time of Day",
+    y = "Rides (%)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.05)),
+  ) +
+  geom_label(
+    aes(label = paste0(round(percentage, 1), "%") ),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_blank(),
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+Not surprisingly, the largest timeframe for member riders was 5:00 PM - 7:59 PM, accounting for 24.8% of all rides in this segment.
+
+For casual riders, the two biggest timeframes, proportionally, were 12:00 PM - 2:59 PM, with 21.5% of all rides occurring during this time, and 5:00 PM - 7:59 PM, which accounted for 23.4% of casual rides.
+
+### 3-3-5: Porportional Total Rides per Type of Day
+
+I revisited [**3-2-5-2**](#3252) and normalized the data to better understand proportional usage on weekdays versus weekends.
+
+Since there are five weekdays and only two weekend days, total ride counts tend to skew toward weekdays.
+
+Additionally, because member riders typically generate more rides overall, directly comparing absolute totals wouldn't provide a fair assessment of user behavior.
+
+To address this, I calculated the average number of rides per weekday and per weekend day, then expressed these averages as percentages of the total average rides for each rider type.
+
+This approach provides a normalized view of weekend versus weekday usage, making it easier to compare behavior across both rider types.
+
+For this chart, I followed a three-step process to prepare the data:
+
+1 - Grouped the data by **member_casual** and **day_type**, then calculated the total ride count for each group. I also computed the average rides per weekday (ride count ÷ 5) and per weekend day (ride count ÷ 2) to account for the difference in days.
+
+2 - Calculated the total average rides for each rider type by summing the average rides for both day types.
+
+3 - Computed the proportion of weekend and weekday rides by dividing the average rides per day type by the total average rides for each rider type, then converted this into a percentage.
+
+#### Code Chunk 3-3-5-1:
+
+```{r}
+average_rides_LTM <- cyclistic %>%
+  group_by(member_casual, day_type) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    avg_per_day = ifelse(day_type == "weekday", ride_count / 5, ride_count / 2)
+  )
+
+total_avg_LTM <- average_rides_LTM %>%
+  group_by(member_casual) %>%
+  summarise(
+    total_avg_rides = sum(avg_per_day),
+    .groups = "drop"
+  )
+
+percentage_rides_LTM <- average_rides_LTM %>%
+  right_join(total_avg_LTM, by = c("member_casual")) %>%
+  mutate(
+    percentage = (avg_per_day / total_avg_rides) * 100
+  )
+
+print(percentage_rides_LTM)
+```
+
+#### Code Chunk 3-3-5-2: {#3352}
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 6}
+ggplot(percentage_rides_LTM,
+       aes(x = day_type, y = percentage, fill = member_casual, group = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_x_discrete(
+    breaks = c("weekday", "weekend"),
+    labels = c("Weekday", "Weekend")
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.10))) +
+  facet_wrap( ~day_type, ncol = 2, scales = "free_x") +
+  labs(
+    title = "Porportional Total Rides per Type of Day",
+    subtitle = "Comparing the normalized average of total rides for casual and member riders in the last 12 months",
+    x = "Type of Day",
+    y = "Rides (%)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +     
+  geom_label(
+      aes(label = paste0(round(percentage, 1), "%")),
+      vjust = -.25,
+      color = "black",
+      fill = "white",
+      label.size = 0,
+      alpha = 0.6,
+      position = position_dodge(width = 0.9)
+    ) +
+ 
+  theme_minimal() +
+  theme(
+    strip.text = element_blank(),
+    legend.position = "right",
+    plot.title = element_text( size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+Chart [**3-3-3-2**](#3332) shows that 38.2% of all casual rides occur on weekends.
+
+However, to make a fairer comparison between weekdays and weekends, I normalized the data to account for the unequal number of weekdays (5) and weekends (2).
+
+After normalization, on average, 60.7% of casual riders' rides take place on weekends, compared to 39.3% on weekdays.
+
+## 3-4: Ride Duration Analysis
+
+Next, I analyzed the average ride duration for each rider type over the past 12 months.
+
+### 3-4-1: Arithmetic Mean of Ride Duration
+
+To compare ride durations month by month, I calculated the arithmetic mean of the ride durations, broken down by rider type (member vs. casual).
+
+Then, I visualized this data as a line graph to show the trend in average ride duration over time.
+
+#### Code Chunk 3-4-1-1:
+
+```{r}
+cyclistic_mean_ride_length_month <- cyclistic %>%
+  group_by(month, member_casual) %>%
+  summarize(mean_ride_length_min = (sum(sum_ride_length_sec) / sum(ride_count)) /
+              60,
+            .groups = "drop")
+
+print(cyclistic_mean_ride_length_month)
+```
+
+#### Code Chunk 3-4-1-2: {#3412}
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 4.5}
+
+convert_to_mmss <- function(minutes) {
+  total_seconds <- round(minutes * 60)
+  sprintf("%02d:%02d", total_seconds %/% 60, total_seconds %% 60)
+}
+
+ggplot(
+  cyclistic_mean_ride_length_month,
+  aes(
+    x = month,
+    y = mean_ride_length_min,
+    linetype = member_casual,
+    color = member_casual,
+    group = member_casual
+  )
+) +
+  geom_line(linewidth = 1) +
+  scale_linetype_manual(values = c("member" = "solid", "casual" = "dashed")) +
+  geom_point(size = 3) +
+  scale_y_continuous(expand = expansion(mult = c(0.10, 0.10))) +
+  scale_x_discrete(
+    labels = function(x)
+      tools::toTitleCase(x)
+  ) +
+  labs(
+    x = "Month",
+    y = "Ride Duration (Minutes)",
+    title = "Mean of Ride Duration per Month",
+    subtitle = "Comparing average ride duration between subscribing members and casual users over the last 12 months",
+    color = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  geom_label(
+    aes(label = convert_to_mmss(mean_ride_length_min)),
+    vjust = -.5,
+    color = "black",
+    size = 3,
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = "10"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  scale_color_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  ) +
+  guides(linetype = "none")
+
+```
+
+For member riders, the average ride duration over the past 12 months remained consistent, typically ranging from 11 to 14 minutes.
+
+Their usage seemed largely unaffected by weather fluctuations, as indicated by the steady ride durations throughout the year.
+
+In contrast, casual riders exhibited more variation in their ride durations.
+
+Their average duration started at 15:50 minutes at the lowest point and peaked in May, reaching an average of 27:22 minutes.
+
+This suggests that casual riders tend to take longer trips during warmer months.
+
+The noticeable dip during the winter months further supports the idea that casual riders are more sensitive to weather conditions, with fewer and shorter rides during colder periods.
+
+### 3-4-2: Arithmetic Mean of Ride Duration (LTM)
+
+I summarized the past 12 months of data to calculate the overall average ride duration for both member and casual riders.
+
+#### Code Chunk 3-4-2-1: {#3421}
+
+```{r}
+convert_to_mmss <- function(minutes) {
+  total_seconds <- round(minutes * 60)
+  sprintf("%02d:%02d", total_seconds %/% 60, total_seconds %% 60)
+}
+
+cyclistic_mean_ride_length_LTM <- cyclistic %>%
+  group_by(member_casual) %>%
+  summarize(mean_ride_length_min = (sum(sum_ride_length_sec) / sum(ride_count)) /
+              60,
+            .groups = "drop") %>% 
+  mutate(mean_ride_length_mmss = convert_to_mmss(mean_ride_length_min)) %>% 
+  select(member_casual, mean_ride_length_mmss)
+
+print(cyclistic_mean_ride_length_LTM)
+```
+
+Member riders had an average ride duration of 12:37 minutes, while casual riders had an average of 24:26 minutes.
+
+While the arithmetic mean provided a quick overview of the average ride duration for each rider type, I was concerned that outliers might be skewing the results.
+
+To get a more accurate understanding of ride duration patterns, I decided to analyze the distribution of total rides across different ride duration segments.
+
+This would help identify if outliers were influencing the averages.
+
+### 3-4-3: Ride Duration Histogram
+
+In section [**2-2-3**](#223), I grouped the rides into 7 duration segments to better understand the distribution of ride lengths.
+
+For this analysis, I used these segments and grouped them into a tibble.
+
+Then, I plotted the distribution of these ride durations for each of the last 12 months to see how the ride patterns changed over time.
+
+#### Code Chunk 3-4-3-1:
+
+```{r}
+cyclistic_histogram_month <- cyclistic %>%
+  group_by(month, member_casual) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(month, member_casual, length_distro_min) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop"
+  )
+
+print(cyclistic_histogram_month)
+```
+
+#### Code Chunk 3-4-3-2:
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+ggplot(cyclistic_histogram_month,
+       aes(x = length_distro_min, y = percentage, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.10))) +
+  facet_wrap(~ month, ncol = 4, scales = "free_x") +
+  labs(
+    title = "Ride Duration",
+    subtitle = "Comparing the distribution of ride durations for member and casual riders for each of the last 12 months",
+    x = "Ride Duration (Minutes)",
+    y = "Rides (%)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12),
+    legend.position = "top",
+    plot.title = element_text(size = 16, face = "bold")  # Center title
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+This chart illustrates that the distribution of ride durations for member riders remains relatively consistent month to month.
+
+In contrast, casual riders show more variation in their ride durations.
+
+In December 2023 and January 2024, most of their rides were shorter, but as spring and summer approached, the distribution became more evenly spread out.
+
+The 0-10 minute segment decreased, while the longer duration segments saw an increase.
+
+### 3-4-4: Ride Duration Histogram (LTM)
+
+Next, I summarized the ride duration data for the entire year to analyze the distribution across both rider types.
+
+I then visualized the data in a paired bar graph to compare the overall ride durations for member and casual riders.
+
+#### Code Chunk 3-4-4-1:
+
+```{r}
+cyclistic_histogram_LTM <- cyclistic %>%
+  group_by(member_casual) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(member_casual, length_distro_min) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop"
+  )
+
+print(cyclistic_histogram_LTM)
+```
+
+#### Code Chunk 3-4-4-2: {#3442}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 6}
+ggplot(
+  cyclistic_histogram_LTM,
+  aes(x = length_distro_min, y = percentage, fill = member_casual, group = member_casual)
+) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.10))) +
+  geom_label(
+    aes(label = paste0(round(percentage, 1), "%")),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6,
+    position = position_dodge(width = 0.9)
+  ) +
+  labs(
+    title = "Ride Duration",
+    subtitle = "Comparing the distribution of ride durations for member and casual riders in the last 12 months",
+    x = "Ride Duration (Minutes)",
+    y = "Rides (%)",
+    fill = "Rider Type",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 12),
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold")
+  ) +
+  scale_fill_brewer(
+    palette = "Set2",
+    breaks = c("casual", "member"),
+    labels = c("Casual", "Member")
+  )
+```
+
+For member riders, 60.6% of all their rides occurred within the 0-10 minute range, followed by 25.2% in the 11-20 minute range.
+
+After that, there was a steep drop-off in activity.
+
+Casual riders, on the other hand, leaned more toward longer rides.
+
+40.1% of their rides were in the 0-10 minute range, with 27.5% in the 11-20 minute range.
+
+A significant 32.4% of all casual rides lasted over 21 minutes, with sizable portions in the 21-30 and 60+ minute ranges.
+
+### 3-4-5: Ride Duration Histogram per Day Type (LTM)
+
+Next, I split the ride duration data between weekdays and weekends to explore whether there are any further insights that can be gleaned from the data.
+
+To do this, I grouped the duration segments by day type (weekend or weekday), made a filter to split the data into two seperate tibbles I then plotted the data.
+
+#### Code Chunk 3-4-5-1:
+
+```{r}
+cyclistic_histogram_LTM_day_type <- cyclistic %>%
+  group_by(day_type, member_casual) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(member_casual, day_type, length_distro_min) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop"
+  )
+
+print(cyclistic_histogram_LTM_day_type)
+```
+
+#### Code Chunk 3-4-5-2:
+
+```{r}
+cyclistic_member_histogram_LTM_day_type <- cyclistic_histogram_LTM_day_type %>%
+  filter(member_casual == "member")
+cyclistic_casual_histogram_LTM_day_type <- cyclistic_histogram_LTM_day_type %>%
+  filter(member_casual == "casual")
+```
+
+#### Code Chunk 3-4-5-3: {#3453}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 9}
+plot_member <- ggplot(cyclistic_member_histogram_LTM_day_type,
+                      aes(x = length_distro_min, y = percentage, fill = day_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  
+  guides(
+    fill = guide_legend(override.aes = list(fill = c("casual" = "#FC8D62", "member" = "#66C2A5" )))
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.20))) +
+  scale_fill_manual(values = c("weekday" = "#66C2A5", "weekend" = "#66C2A5"),
+                    labels = c("Casual", "Member")
+                    ) +
+  facet_wrap(~ day_type, ncol = 2, labeller = labeller(day_type = tools::toTitleCase)) +
+  labs(
+    title = "Ride Duration",
+    subtitle = "Comparing the distribution of ride durations for member and casual riders in the last 12 months",
+    x = "Ride Duration (Minutes)",
+    y = "Rides (%)",
+    fill = "Rider Type"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    legend.position = "top"
+  ) +
+  geom_label(
+    aes(label = paste0(round(percentage, 2), "%")),
+    vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 0.6
+  )  
+
+plot_casual <- ggplot(
+      cyclistic_casual_histogram_LTM_day_type,
+      aes(x = length_distro_min, y = percentage, fill = day_type)
+    ) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.20))) +
+      scale_fill_manual(values = c("weekday" = "#FC8D62", "weekend" = "#FC8D62"),
+                    guide = "none") +
+      facet_wrap(~day_type, ncol = 2, labeller = labeller(day_type = tools::toTitleCase)) +
+      labs(
+          title = "",
+          subtitle = "",
+          x = "Ride Duration (Minutes)",
+          y = "Rides (%)",
+          caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+      ) +
+      theme_minimal() +
+      theme(
+        strip.text = element_text(size = 12),
+        plot.title = element_text(size = 16, face = "bold"),
+        legend.position = "top"
+      ) +
+    geom_label(
+      aes(label = paste0(round(percentage, 2), "%")),
+      vjust = -.25,
+      color = "black",
+      fill = "white",
+      label.size = 0,
+      alpha = 0.6
+    )
+    
+  grid.arrange(
+          plot_member,
+          plot_casual,
+          ncol = 1
+  )
+```
+
+When I isolated the data for weekends and weekdays, I found that member riders tended to ride slightly longer on weekends.
+
+However, the distribution of ride durations was largely similar between weekdays and weekends for member riders.
+
+For casual riders, the pattern was different.
+
+The distribution became more evenly spread across all time segments beyond the 0-10 minute range, with a noticeable increase in longer rides.
+
+On weekends, 39.14% of casual rides lasted over 21 minutes, with 24.72% lasting over 31 minutes.
+
+A notable 9.04% of rides extended beyond 60 minutes.
+
+### 3-4-6: Calculating Grouped Mean and Grouped Median
+
+Next, I calculated the grouped mean and grouped median using the frequency distribution and the appropriate formulas for grouped data.
+
+I chose to use the grouped mean because it provides a better approximation of the overall mean by accounting for the class intervals, which can reduce the skew that might occur with the arithmetic mean when dealing with grouped data.
+
+To calculate the grouped mean, I used the following formula:
+
+$$
+\text{Grouped Mean} = \frac{\sum{(f \cdot x)}}{\sum{f}}
+$$
+
+Where:
+
+-   $f$: Frequency of the class
+-   $x$: Midpoint of the class interval
+-   $\sum{(f \cdot x)}$: Sum of the products of the frequency and the midpoint for each class
+-   $\sum{f}$: Total frequency
+
+#### Code Chunk 3-4-6-1: {#3461}
+
+```{r}
+convert_to_mmss <- function(minutes) {
+  total_seconds <- round(minutes * 60)
+  sprintf("%02d:%02d", total_seconds %/% 60, total_seconds %% 60)
+}
+
+calculate_group_mean <- function(data) {
+  data %>%
+    group_by(member_casual) %>%
+    mutate(
+      x =  case_when(
+        length_distro_min == "0 - 10" ~ 5,
+        length_distro_min == "11 - 20" ~ 15.5,
+        length_distro_min == "21 - 30" ~ 25.5,
+        length_distro_min == "31 - 40" ~ 35.5,
+        length_distro_min == "41 - 50" ~ 45.5,
+        length_distro_min == "51 - 60" ~ 55.5,
+        length_distro_min == "60+" ~ 65.5,
+        TRUE ~ NA_real_
+      ),
+      f = ride_count,
+      fx = f * x,
+      total_rides = sum(f),
+      sum_fx = sum(fx),
+      grouped_mean = sum_fx / total_rides
+    ) %>%
+    slice(1) %>%
+    ungroup() %>%
+    
+select(
+    member_casual,
+    grouped_mean
+  )
+  
+}
+
+cyclistic_grouped_mean <- calculate_group_mean(cyclistic_histogram_LTM)
+
+cyclistic_grouped_mean <- cyclistic_grouped_mean %>%
+  mutate(grouped_mean = convert_to_mmss(grouped_mean))
+
+
+
+print(cyclistic_grouped_mean)
+```
+
+After calculating the grouped mean, I found that member riders had a grouped mean of 11:32 minutes, while casual riders had a grouped mean of 19:33 minutes.
+
+The grouped mean came in a bit lower than the arithmetic mean I calculated earlier in [**3-4-2-1**](#3421), which makes sense since my goal was to reduce the influence of outliers that might have been skewing the data.
+
+To further mitigate the effect of extreme values, I also calculated the grouped median, which provides a clearer measure of central tendency, especially in skewed distributions.
+
+In addition, I calculated the 25th, 75th, and 90th percentiles, along with the Interquartile Range (IQR).
+
+These measures offer deeper insight into the spread of the data.
+
+The IQR, in particular, highlights the range within which the middle 50% of the data falls, making it a robust metric that is less sensitive to outliers.
+
+To calculate the grouped median, I used the following formula:
+
+$$
+M = l + \left(\frac{\frac{n}{2} - cf}{f}\right) \times h
+$$
+
+Where:
+
+-   $M$: Median value (the result of the formula)\
+-   $l$: Lower boundary of the median class\
+-   $n$: Total number of observations\
+-   $cf$: Cumulative frequency up to the class before the median class\
+-   $f$: Frequency of the median class\
+-   $h$: Class width (size of the class interval)
+
+#### Code Chunk 3-4-6-2: {#3462}
+
+```{r}
+convert_to_mmss <- function(minutes) {
+  total_seconds <- round(minutes * 60)
+  sprintf("%02d:%02d", total_seconds %/% 60, total_seconds %% 60)
+}
+
+calculate_percentile <- function(data, percentile) {
+  data %>%
+    group_by(member_casual) %>%
+    mutate(
+      total_rides = sum(ride_count),
+      n = total_rides,
+      l = case_when(
+        length_distro_min == "0 - 10" ~ 0,
+        length_distro_min == "11 - 20" ~ 11,
+        length_distro_min == "21 - 30" ~ 21,
+        length_distro_min == "31 - 40" ~ 31,
+        length_distro_min == "41 - 50" ~ 41,
+        length_distro_min == "51 - 60" ~ 51,
+        length_distro_min == "60+" ~ 61,
+        TRUE ~ NA_real_
+      ),
+      f = cumsum(ride_count),
+      cf = lag(f, default = 0),
+      h = 10,
+      median = l+(((n * percentile)-cf)/f)*h
+    ) %>% 
+
+  filter(f >= n*percentile) %>%
+  slice(1) %>%
+    
+  ungroup() %>%
+  
+  select(
+    member_casual,
+    median
+  )
+} 
+
+cyclistic_median_25 <- calculate_percentile(cyclistic_histogram_LTM, 0.25)
+cyclistic_median <- calculate_percentile(cyclistic_histogram_LTM, 0.50)
+cyclistic_median_75 <- calculate_percentile(cyclistic_histogram_LTM, 0.75)
+cyclistic_median_90 <- calculate_percentile(cyclistic_histogram_LTM,  0.90)
+
+cyclistic_median_IQR <- cyclistic_median_75 %>%
+  left_join(cyclistic_median_25, by = "member_casual") %>%
+  mutate(IQR = median.x - median.y) %>%
+  select(member_casual, IQR)
+
+cyclistic_median_percentiles <- cyclistic_median_25 %>%
+  left_join(cyclistic_median, by = "member_casual") %>%
+  left_join(cyclistic_median_75, by = "member_casual") %>%
+  left_join(cyclistic_median_90, by = "member_casual") %>%
+  left_join(cyclistic_median_IQR, by = "member_casual") %>%
+  rename(
+    median_25th = median.x,
+    median_50th = median.y,
+    median_75th = median.x.x,
+    median_90th = median.y.y
+  )
+
+cyclistic_median_percentiles <- cyclistic_median_percentiles %>%
+  mutate(
+    median_25th = convert_to_mmss(median_25th),
+    median_50th = convert_to_mmss(median_50th),
+    median_75th = convert_to_mmss(median_75th),
+    median_90th = convert_to_mmss(median_90th),
+    IQR = convert_to_mmss(IQR)
+  )
+
+print(cyclistic_median_percentiles)
+```
+
+The median ride duration for member riders was 8:15 minutes, while for casual riders, it was 12:28 minutes.
+
+For casual riders, 25% of all casual rides lasted longer than 21:55 minutes.
+
+Additionally, the top 10% of casual rides lasted 41:23 minutes or more, highlighting a significant portion of long-duration trips.
+
+The Interquartile Range (IQR), which represents the middle 50% of ride durations, was 8:33 minutes for members and 15:41 minutes for casual riders.
+
+This suggests that casual riders had a wider spread in ride times compared to members.
+
+I then applied the same grouped median formula to compare weekday and weekend rides for both user types, looking for any notable differences.
+
+#### Code Chunk 3-4-6-3: {#3463}
+
+```{r}
+convert_to_mmss <- function(minutes) {
+  total_seconds <- round(minutes * 60)
+  sprintf("%02d:%02d", total_seconds %/% 60, total_seconds %% 60)
+}
+
+calculate_day_type_percentile <- function(data, percentile) {
+  data %>%
+    group_by(member_casual, day_type) %>%
+    mutate(
+      total_rides = sum(ride_count),
+      n = total_rides,
+      l = case_when(
+        length_distro_min == "0 - 10" ~ 0,
+        length_distro_min == "11 - 20" ~ 11,
+        length_distro_min == "21 - 30" ~ 21,
+        length_distro_min == "31 - 40" ~ 31,
+        length_distro_min == "41 - 50" ~ 41,
+        length_distro_min == "51 - 60" ~ 51,
+        length_distro_min == "60+" ~ 61,
+        TRUE ~ NA_real_
+      ),
+      f = cumsum(ride_count),
+      cf = lag(f, default = 0),
+      h = 10,
+      median = l+(((n * percentile)-cf)/f)*h
+    ) %>% 
+    
+  filter(f >= n*percentile) %>%
+  slice(1) %>%
+    
+  ungroup() %>%
+  
+  select(
+    member_casual,
+    day_type,
+    median
+  )
+} 
+
+cyclistic_median_25_day_type <- calculate_day_type_percentile(cyclistic_histogram_LTM_day_type, 0.25)
+cyclistic_median_day_type <- calculate_day_type_percentile(cyclistic_histogram_LTM_day_type, 0.50)
+cyclistic_median_75_day_type <- calculate_day_type_percentile(cyclistic_histogram_LTM_day_type, 0.75)
+cyclistic_median_90_day_type <- calculate_day_type_percentile(cyclistic_histogram_LTM_day_type,  0.90)
+
+cyclistic_median_IQR_day_type <- cyclistic_median_75_day_type %>%
+  left_join(cyclistic_median_25_day_type, by = c("member_casual", "day_type")) %>%
+  mutate(IQR = median.x - median.y) %>%
+  select(member_casual, day_type, IQR)
+
+cyclistic_median_day_type_percentiles <- cyclistic_median_25_day_type %>%
+  left_join(cyclistic_median_day_type, by = c("member_casual", "day_type")) %>%
+  left_join(cyclistic_median_75_day_type, by = c("member_casual", "day_type")) %>%
+  left_join(cyclistic_median_90_day_type, by = c("member_casual", "day_type")) %>%
+  left_join(cyclistic_median_IQR_day_type, by = c("member_casual", "day_type")) %>%
+  rename(
+    median_25th = median.x,
+    median_50th = median.y,
+    median_75th = median.x.x,
+    median_90th = median.y.y
+  ) %>%
+  mutate(
+    median_25th = convert_to_mmss(median_25th),
+    median_50th = convert_to_mmss(median_50th),
+    median_75th = convert_to_mmss(median_75th),
+    median_90th = convert_to_mmss(median_90th),
+    IQR = convert_to_mmss(IQR)
+  )
+
+print(cyclistic_median_day_type_percentiles)
+```
+
+On weekends, the median ride duration for casual riders increased to 13:52 minutes, while the top 10% of rides lasted 51:14 minutes or more, indicating that casual riders tended to take longer trips on weekends compared to weekdays.
+
+The Interquartile Ranges (IQRs) were 15:48 minutes on weekdays and 15:12 minutes on weekends, showing a slight decrease in variability on weekends.
+
+Next, I aimed to replicate the chart from [**3-4-1-2**](#3412), this time using the median ride duration per month along with their respective quartiles, to observe seasonal trends in ride durations.
+
+To do this, I summarized the data per month, then transformed the data into long format, and finally plotted the results using line graphs.
+
+#### Code Chunk 3-4-6-4:
+
+```{r}
+calculate_percentile <- function(data, percentile) {
+  data %>%
+    group_by(month, member_casual) %>%
+    mutate(
+      n = sum(ride_count),
+      l = case_when(
+        length_distro_min == "0 - 10" ~ 0,
+        length_distro_min == "11 - 20" ~ 11,
+        length_distro_min == "21 - 30" ~ 21,
+        length_distro_min == "31 - 40" ~ 31,
+        length_distro_min == "41 - 50" ~ 41,
+        length_distro_min == "51 - 60" ~ 51,
+        length_distro_min == "60+" ~ 61,
+        TRUE ~ NA_real_
+      ),
+      f = cumsum(ride_count),
+      cf = lag(f, default = 0),
+      h = 10,
+      median = l+(((n * percentile)-cf)/f)*h
+    ) %>% 
+
+  filter(f >= n*percentile) %>%
+  slice(1) %>%
+    
+  ungroup() %>%
+  
+  select(
+    month,
+    member_casual,
+    median
+  )
+} 
+
+cyclistic_median_month_25 <- calculate_percentile(cyclistic_histogram_month, 0.25)
+cyclistic_median_month <- calculate_percentile(cyclistic_histogram_month, 0.50)
+cyclistic_median_month_75 <- calculate_percentile(cyclistic_histogram_month, 0.75)
+cyclistic_median_month_90 <- calculate_percentile(cyclistic_histogram_month,  0.90)
+
+cyclistic_median_month_percentiles <- cyclistic_median_month_25 %>%
+  left_join(cyclistic_median_month, by = c("month", "member_casual")) %>%
+  left_join(cyclistic_median_month_75, by = c("month", "member_casual")) %>%
+  left_join(cyclistic_median_month_90, by = c("month", "member_casual")) %>% 
+  rename(
+    median_25th = median.x,
+    median_50th = median.y,
+    median_75th = median.x.x,
+    median_90th = median.y.y
+  )
+print(cyclistic_median_month_percentiles)
+```
+
+#### Code Chunk 3-4-6-5:
+
+```{r}
+cyclistic_median_month_percentiles_long <- cyclistic_median_month_percentiles %>%
+  pivot_longer(
+    cols = starts_with("median"),
+    names_to = "percentile",
+    values_to = "median"
+  )
+
+print(cyclistic_median_month_percentiles_long)
+```
+
+#### Code Chunk 3-4-6-6: {#3466}
+
+```{r, fig.align= "center", fig.width = 12, fig.height = 6}
+ggplot(
+  cyclistic_median_month_percentiles_long,
+  aes(
+    x = month,
+    y = median,
+    color = member_casual,
+    linetype = member_casual,
+    group = percentile,
+    alpha = percentile
+  )
+) +
+  geom_line(linewidth = 1, alpha = 1) +
+  scale_linetype_manual(values = c("member" = "solid", "casual" = "dashed")) +
+  geom_point(size = 3, alpha = 1) +
+  geom_ribbon(aes(ymin = 0, ymax = median, fill = member_casual)) +
+  facet_wrap(~ member_casual, ncol = 2, labeller = labeller(member_casual = tools::toTitleCase)) +
+  scale_y_continuous(breaks = seq(0, 60, by = 10),expand = expansion(mult = c(0, 0.20))) +
+  scale_x_discrete(
+    labels = function(x)
+      tools::toTitleCase(x)
+  ) +
+  geom_text(
+    data = cyclistic_median_month_percentiles_long %>%
+      group_by(member_casual, percentile) %>%
+      slice(which.max(median)), # Get the row with the max median for each percentile and member_casual
+    aes(x = 6.5, y = median * .80, label = case_when(
+      percentile == "median_90th" ~ "90th Percentile",
+      percentile == "median_75th" ~ "75th Percentile",
+      percentile == "median_50th" ~ "Median",
+      percentile == "median_25th" ~ "25th Percentile"
+    )),
+    color = "black",
+    size = 3,
+    alpha = 1,  # Set alpha to 1 to override the ribbon's alpha
+    show.legend = FALSE
+  ) +
+  labs(
+    x = "Month",
+    y = "Ride Duration (Minutes)",
+    title = "Ride Duration",
+    subtitle = "Comparing median ride duration and quartiles for members and casual riders over the last 12 months",
+    color = "User Type",
+    caption = "Note: The shaded areas beneath the quartile lines are for visual emphasis only, they do not represent all possible values within the area.\nSource: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = "10"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_alpha_manual(values = c("median_90th" = .10, "median_75th" = .25, "median_50th" = .50, "median_25th" = .75)) +
+  guides(
+         color = "none",
+         fill = "none",
+         alpha = "none",
+         linetype = "none",
+         )
+```
+
+Member riders exhibit consistent ride durations throughout the year across all quartiles, except for the 90th percentile, which remains around 21 minutes, only dipping in December 2023 and January 2024.
+
+Median ride times for members stay between 7–9 minutes year-round, with a slight increase in summer.
+
+However, this seasonal effect is much less pronounced compared to casual riders.
+
+Casual users consistently have higher median ride durations than members.
+
+The 90th percentile for casual riders is significantly higher, particularly in spring and summer (April – July 2024).
+
+The peak for casual users occurs from May to July 2024, where their 90th percentile ride durations exceed 50 minutes consistently.
+
+There is a sharp increase in casual ride durations in March and April, suggesting that seasonal riders begin appearing in early spring and peak in summer.
+
+## 3-5: Bike Preference
+
+To better understand the usage patterns of electric and classic bikes, I analyzed ride data by bike type (electric vs. classic) for both member and casual riders over the last 12 months.
+
+The goal of this analysis was to uncover any trends or insights related to bike preferences between the two rider groups.
+
+### 3-5-1: Rideable Type per Month
+
+I calculated the percentage of rides for each bike type on a monthly basis, segmented by rider type.
+
+To do this, I created a tibble grouping member and casual riders, calculating the percentage of rides using electric and classic bikes for each of the last 12 months.
+
+Finally, I visualized the data by plotting it into pie charts.
+
+#### Code Chunk 3-5-1-1:
+
+```{r}
+cyclistic_bike_pref <- cyclistic %>%
+  group_by(member_casual, month) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(month, member_casual, rideable_type) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop"
+  )
+
+print(cyclistic_bike_pref)
+```
+
+#### Code Chunk 3-5-1-2:
+
+```{r}
+cyclistic_member_pref <- cyclistic_bike_pref %>%
+  filter(member_casual == "member")
+cyclistic_casual_pref <- cyclistic_bike_pref %>%
+  filter(member_casual == "casual")
+```
+
+#### Code Chunk 3-5-1-3:
+
+```{r, fig.align= "center", fig.width = 9, fig.height = 16}
+plot_member <- ggplot(cyclistic_member_pref,
+                      aes(x = "", y = percentage, fill = rideable_type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c("classic_bike" = "#8DA0CB", "electric_bike" = "#E78AC3"),
+                    labels = c("Classic Bike", "Electric Bike"),
+                    guide = guide_legend(
+                      title = "Member",
+                      title.position = "top",
+                      title.theme = element_text(hjust = 0.5),
+                      label.theme = element_text(hjust = 0.5)
+                    )
+  ) +
+  facet_wrap(~ month, ncol = 2) +
+  labs(
+    title = "Rideable Type",
+    subtitle = "Comparing rideable types for casual and member riders across each of the last 12 months",
+    caption = "\n"
+  ) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(margin = margin(b = 10)),
+    legend.title = element_text(size = 12),
+    legend.position = "top",
+  )
+
+plot_casual <- ggplot(cyclistic_casual_pref,
+                        aes(x = "", y = percentage, fill = rideable_type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c("classic_bike" = "#8DA0CB", "electric_bike" = "#E78AC3"),
+                    labels = c("Classic Bike", "Electric Bike"),
+                    guide = guide_legend(
+                      title = "Casual",
+                      title.position = "top",
+                      title.theme = element_text(hjust = 0.5),
+                      label.theme = element_text(hjust = 0.5)
+                    )
+  ) +
+  facet_wrap(~ month, ncol = 2) +
+  labs(
+    title = "",
+    subtitle = "",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+  ) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(margin = margin(b = 10)),
+    legend.title = element_text(size = 12),
+    legend.position = "top"
+  )
+
+grid.arrange(
+  plot_member, 
+  plot_casual,
+  ncol = 2
+) 
+```
+
+Throughout the 12 months, the majority of rides are on classic bikes for both members and casual riders.
+
+The highest proportion of classic bike rides is seen in February 2024, which could indicate a preference for classic bikes during the winter months.
+
+The data shows that classic bikes remain the most popular choice for both rider types. While electric bike usage is generally lower, casual riders do show a slight increase in electric bike usage during certain months.
+
+### 3-5-2: Rideable Type per Day Type (LTM)
+
+I summarized the data from the last 12 months, categorizing rides by weekends and weekdays to uncover any potential patterns in bike preferences between the two day types.
+
+#### Code Chunk 3-5-2-1:
+
+```{r}
+cyclistic_bike_pref_YTD <- cyclistic %>%
+  group_by(member_casual, day_type) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(day_type, member_casual, rideable_type) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop"
+  )
+
+print(cyclistic_bike_pref_YTD)
+```
+
+#### Code Chunk 3-5-2-2:
+
+```{r}
+cyclistic_member_pref_YTD <- cyclistic_bike_pref_YTD %>%
+  filter(member_casual == "member")
+cyclistic_casual_pref_YTD <- cyclistic_bike_pref_YTD %>%
+  filter(member_casual == "casual")
+```
+
+#### Code Chunk 3-5-2-3:
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 4.5}
+plot_member <- ggplot(cyclistic_member_pref_YTD,
+                      aes(x = "", y = percentage, fill = rideable_type, group = rideable_type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c("classic_bike" = "#8DA0CB", "electric_bike" = "#E78AC3"),
+                    labels = c("Classic Bike", "Electric Bike"),
+                    guide = guide_legend(
+                      title = "Member",
+                      title.position = "top",
+                      title.theme = element_text(hjust = 0.5),
+                      label.theme = element_text(hjust = 0.5)
+                    )
+  ) +
+  facet_wrap(~ day_type, ncol = 2, labeller = labeller(day_type = tools::toTitleCase)) +
+  labs(
+    title = "Rideable Type",
+    subtitle = "Comparing rideable type for casual and member riders in the last 12 months",
+    caption = "\n"
+  ) +
+  theme_void() +
+  theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(margin = margin(b = 10)),
+      legend.title = element_text(size = 12),
+      legend.position = "top",
+      strip.text = element_text(size = 12)
+  ) +
+  geom_label(
+    aes(label = paste0(round(percentage, 2), "%")),
+     vjust = -.25,
+    color = "black",
+    fill = "white",
+    label.size =NA,
+    alpha = 1
+  )  
+
+plot_casual <- ggplot(
+      cyclistic_casual_pref_YTD,
+      aes(x = "", y = percentage, fill = rideable_type, group = rideable_type)
+    ) +
+      geom_bar(stat = "identity", width = 1) +
+      coord_polar(theta = "y") +
+      scale_fill_manual(values = c("classic_bike" = "#8DA0CB", "electric_bike" = "#E78AC3"),
+                    labels = c("Classic Bike", "Electric Bike"),
+                    guide = guide_legend(
+                      title = "Casual",
+                      title.position = "top",
+                      title.theme = element_text(hjust = 0.5),
+                      label.theme = element_text(hjust = 0.5)
+                    )
+      ) +
+      facet_wrap(~ day_type, ncol = 2, labeller = labeller(day_type = tools::toTitleCase)) +
+      labs(
+        title = "",
+        subtitle = "",
+        caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license."
+      ) +
+      theme_void() +
+      theme(
+          plot.title = element_text(size = 16, face = "bold"),
+          plot.subtitle = element_text(margin = margin(b = 10)),
+          legend.title = element_text(size = 12),
+          legend.position = "top",
+          strip.text = element_text(size = 12)
+      ) +
+    geom_label(
+      aes(label = paste0(round(percentage, 2), "%")),
+      vjust = -.25,
+      color = "black",
+      fill = "white",
+      label.size = NA,
+      alpha = 1
+     )
+    
+grid.arrange(
+  plot_member,
+  plot_casual,
+  ncol = 2
+)
+```
+
+There did not seem to be a significant preference for bike type usage based on the data.
+
+Members tend to use classic bikes more on weekends (69.1%) compared to weekdays (66.2%) and casual riders also show a similar pattern, with a higher percentage of classic bike usage on weekends (69.6%) compared to weekdays (62.8%).
+
+Members use electric bikes more frequently on weekdays (33.8%) compared to weekends (30.9%) and casual riders show a higher percentage of electric bike usage on weekdays (37.2%) compared to weekends (30.4%).
+
+For both members and casual riders, classic bikes are the preferred choice on both weekdays and weekends, but the preference is slightly stronger on weekends.
+
+### 3-5-3: Rideable Type (LTM)
+
+Finally, I summarized all the bike usage data for both member and casual riders across the last 12 months (LTM) to get an overall view of rideable type preferences.
+
+This analysis was done to evaluate the general trends in bike type usage for both types of riders over the long term.
+
+#### Code Chunk 3-5-3-1:
+
+```{r}
+cyclistic_bike_pref_LTM <- cyclistic %>%
+  group_by(member_casual) %>%
+  mutate(total_rides = sum(ride_count)) %>%
+  ungroup() %>% 
+  group_by(member_casual, rideable_type) %>%
+  summarise(
+    ride_count = sum(ride_count),
+    total_rides = first(total_rides),
+    percentage = (ride_count / total_rides) * 100,
+    .groups = "drop"
+  )
+print(cyclistic_bike_pref_LTM)
+```
+
+#### Code Chunk 3-5-3-2:
+
+```{r, fig.align= "center", fig.width = 8, fig.height = 4.5}
+ggplot(cyclistic_bike_pref_LTM,
+                      aes(x = "", y = percentage, fill = rideable_type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c("classic_bike" = "#8DA0CB", "electric_bike" = "#E78AC3"),
+                    labels = c("Classic Bike", "Electric Bike")
+  ) +
+  facet_wrap(~ member_casual, ncol = 2, labeller = labeller(member_casual = tools::toTitleCase)) +
+  labs(
+    title = "Rideable Type",
+    subtitle = "Comparing rideable type for casual and member riders in the last 12 months",
+    caption = "Source: Divvy bike-share data, available on their website (divvybikes.com) under their data license.",
+    fill = "Rideable Type"
+  ) +
+  theme_void() +
+  theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(margin = margin(b = 10)),
+      legend.position = "top",
+      strip.text = element_text(size = 12)
+  ) +
+  geom_label(
+    aes(label = paste0(round(percentage, 2), "%")),
+    vjust = -.5,
+    color = "black",
+    fill = "white",
+    label.size = 0,
+    alpha = 1,
+    position = position_dodge(width = .9)
+  )  
+```
+
+Both members and casual riders show a preference for classic bikes, with members exhibiting a slightly stronger preference (66.84% vs. 65.36% for casual riders).
+
+Interestingly, casual riders have a slightly higher percentage of electric bike usage (34.64%) compared to members (33.16%), which could suggest a greater interest in electric bikes among casual riders.
+
+However, based on the data across months, day types, and overall trends, there doesn't seem to be a significant or actionable preference for one bike type over the other.
+
+The similarity in patterns between member and casual riders suggests that factors other than user preference may be influencing these results.
+
+I suspect that the availability of electric bikes versus classic bikes in the fleet may be a key limiting factor.
+
+It is likely that the supply of electric bikes, rather than user preference alone, is shaping the data, with riders simply choosing the bike type available to them at the time of their ride.
+
+# **4: Key Findings**
+
+## 4-1: Summary of Insights
+
+The analysis identifies distinct seasonal trends for both member and casual riders. As shown in [**3-2-1-2**](#3212), both rider groups experience a sharp decline in rides during winter, followed by a steady rise in spring, peaking in summer before tapering off again. While their seasonal patterns are similar, members consistently take more rides than casual users. Casual ridership surges most in warmer months, with the largest increase occurring between April and May 2024, adding 72,118 rides. Their ridership is highly volatile, with sharp declines in December 2023 and January 2024 (-49.1% and -51.9%) before rebounding in February and May 2024 (+116.5% and +78.2%) ([**3-3-2-2**](#3322)). In contrast, casual riders experience greater month-to-month fluctuations, with an average change of 19.09%, compared to 6.31% for members ([**3-3-2-3**](#3323)).
+
+Rider activity also varies by day of the week. As shown in [**3-2-3-3**](#3233), members are most active on weekdays, particularly Wednesdays, while casual riders favor weekends, peaking on Saturdays. Figure [**3-3-3-2**](#3332) shows that 38.2% of casual rides occur on weekends, whereas member ridership is more evenly distributed throughout the week. Normalized data in [**3-3-5-2**](#3352) further highlights that 60.7% of casual rides occur on weekends, reinforcing this preference.
+
+Beyond seasonal and daily patterns, ride duration also reveals key behavioral differences. Figure [**3-4-4-2**](#3442) shows that 60.6% of member rides last under 10 minutes, while 32.4% of casual rides exceed 21 minutes. This gap widens on weekends, with 39.14% of casual rides exceeding 21 minutes and 9.04% lasting over an hour ([**3-4-5-3**](#3453)). Casual riders also have a longer median ride duration of 12:28 minutes, compared to 8:15 minutes for members ([**3-4-6-2**](#3462)). Seasonal trends amplify these differences—casual riders' 90th percentile ride duration consistently exceeds 50 minutes from May to July 2024 ([**3-4-6-6**](#3466)).
+
+## 4-2: Profile of the Member Rider
+
+- **Consistent ridership:** Member ridership remains steady year-round, with only minor seasonal fluctuations.
+- **Weekday preference:** The majority of member rides occur on weekdays, peaking on Wednesdays.
+- **Short, predictable ride durations:** Member median ride times range from 7 to 9 minutes year-round.
+- **Frequent short trips:** 60.6% of member rides last 10 minutes or less, with a median duration of 8:15 minutes.
+- **Lower variability:** Member ridership fluctuates less than casual riders, averaging a 6.31% change month-to-month.
+
+## 4-3: Profile of the Casual Rider
+
+- **Highly seasonal ridership:** Casual ridership peaks dramatically in summer, with sharp declines in winter.
+- **Strong weekend preference:** 38.2% of casual rides occur on weekends, peaking on Saturdays.
+- **Longer ride durations:** The median ride duration for casual riders is 12:28 minutes, with significant increases on weekends and in the upper quartiles.
+- **Significant proportion of extended trips:** 32.4% of casual rides last over 21 minutes, increasing to 39.14% on weekends.
+- **Extreme month-to-month fluctuations:** Casual riders experience larger fluctuations, with an average monthly change of 19.09%.
+
+## 4-4: Target Audience for Conversion
+
+To effectively convert casual riders into members, it's crucial to identify the segments most likely to benefit from membership. Based on the data, the ideal target audience includes:
+
+- **Frequent Riders:** Casual riders who use the service regularly, particularly on weekends, are prime candidates for membership. Their commitment makes them more likely to value the benefits of a membership.
+  
+- **Long Ride Durations:** Riders who typically take longer trips (over 21 minutes) are well-suited to membership. They would benefit from flexible options, such as unlimited rides or extended ride times, to enhance their experience.
+
+- **Seasonal Users:** Casual riders who see sharp increases in usage during warmer months but take extended breaks in winter represent a group with strong seasonal preferences. Incentives to encourage year-round usage or flexible membership options could appeal to these riders.
+
+- **Weekend Riders:** Casual riders who primarily use the service on weekends, especially Saturdays, should be targeted with promotions emphasizing the convenience and savings of a membership for weekend use.
+
+This group—comprising frequent weekend riders, those with longer ride durations, and those with seasonal fluctuations—represents the best opportunity for conversion. Their established usage patterns suggest that a membership would offer enhanced value and consistency, leading to a higher level of commitment to the service.
+
+# **5: Recommendations**
+
+## 5-1: Pre-Season Push and Winter Freeze
+
+**How It Works:**
+Before peak riding seasons, offer promotions and incentives highlighting the cost savings of membership over pay-per-ride. The new "Winter Freeze" option allows members to pause their service for one month during off-peak months (e.g., December–February) at no cost. This feature offers flexibility for casual riders considering an upgrade while providing existing members with a seasonal benefit.
+
+**Reasoning:**
+Casual riders are most active in spring and summer. A well-timed promotion can encourage them to convert to membership by emphasizing long-term savings. The "Winter Freeze" feature adds value by reducing commitment concerns, appealing to both new and existing members.
+
+**Pros:**
+
+- Encourages casual riders to convert by demonstrating the financial benefit of membership.
+- Leverages seasonal ridership trends to maximize conversions.
+- Provides existing members with added value during slower months, increasing retention.
+
+**Cons:**
+
+- Potential revenue loss if existing members freeze their membership instead of paying for those months.
+
+**Mitigation:**
+Frame discounts as limited-time offers to create urgency. Pair promotions with messaging that encourages year-round use. A/B test the "Winter Freeze" on a smaller scale to measure impact on revenue and retention before full implementation. 
+
+## 5-2: In-App Soft Upsell Using Rider Data
+
+**How It Works:**
+Use historical ride data to generate personalized in-app upsell notifications for casual riders. If a rider takes 3–5 rides in a month, they receive a message like: _"You’ve spent $X this month on rides. For just $Y more, you could become a member and save!"_ Notifications are triggered at optimal times, such as after the third ride or during peak seasons.
+
+**Reasoning:**
+Personalized upselling based on real usage data is highly effective in converting casual riders. By presenting clear cost-saving comparisons, riders can see the financial benefit of membership. Targeting these messages during high-usage months increases the likelihood of conversion.
+
+**Pros:**
+
+- Data-driven and highly personalized, making the offer relevant to each user.
+- Low friction, as it requires no external action beyond the app.
+- Increases conversion rates without disrupting the user experience.
+
+**Cons:**
+
+- Less effective for inactive or infrequent riders.
+
+**Mitigation:**
+Optimize timing of notifications based on behavioral data. Allow users to dismiss or opt out of messages to prevent notification fatigue.
+
+## 5-3: Weekend-Only Tier
+
+**How It Works:**
+Introduce a discounted, weekend-only membership tier for casual riders who primarily use the service on Saturdays and Sundays. This lower-cost alternative provides unlimited weekend access while maintaining flexibility. The membership can serve as a "starter" option, with targeted upsell campaigns encouraging upgrades to full membership.
+
+**Reasoning:**
+Many casual riders use the service predominantly on weekends. Offering a dedicated weekend-tier membership provides an affordable entry point, increasing recurring revenue while fostering long-term user engagement.
+
+**Pros:**
+
+- Unlocks a new revenue stream from casual riders unwilling to commit to full-year access.
+- Provides a flexible option that aligns with certain riders’ usage patterns.
+- Creates opportunities for gradual upselling to full membership.
+
+**Cons:**
+
+- Generates lower revenue per user compared to full memberships.
+
+**Mitigation:**
+Carefully price the weekend-only tier to maintain profitability. Use targeted messaging to highlight the advantages of full membership, offering occasional incentives for upgrading.
