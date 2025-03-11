@@ -19,7 +19,12 @@ The case study demonstrates the process of cleaning, analyzing, and visualizing 
 ---
 
 ## Project Description
-In this project, we analyze the **Cyclistic bike-share** data to explore patterns in customer usage and identify strategies to increase member subscriptions. By analyzing data from casual and member riders, the goal is to provide actionable recommendations for **Cyclistic's marketing and product strategy**.
+In this project, I analyzed the **Cyclistic bike-share** data to explore patterns in customer usage and identify strategies to increase member subscriptions. **Cyclistic is a fictional company based on real-world data from Divvy, a Chicago-based bike-share program.**  
+
+The Director of Marketing believes that increasing annual memberships is crucial for the company's future. Since **annual members are more profitable than casual riders**, this analysis aims to uncover key insights and provide **three actionable recommendations** to help convert casual riders into long-term members.  
+
+The dataset includes **12 months of ride history** (Nov 2023 – Oct 2024) with millions of ride records. The data, provided by **Motivate International Inc.**, is publicly available under a data-sharing agreement: [Divvy Data](https://divvy-tripdata.s3.amazonaws.com/index.html).
+
 
 ---
 
