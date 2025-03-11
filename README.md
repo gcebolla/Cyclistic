@@ -42,7 +42,7 @@ To get started with this project, follow these steps:
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/yourusername/your-repository-name.git
+   git clone https://github.com/gcebolla/Cyclistic-Case-Study.git
    
 2. Install necessary R packages (if you don't have them already):
    ```R
@@ -65,7 +65,7 @@ To get started with this project, follow these steps:
    
 ## Case Study Output
 You can view the case study **online** by visiting the following URL (GitHub Pages link will go here once set up):
-[View Case Study Output](https://yourusername.github.io/your-repository-name/case_study_output.html)
+[View Case Study Output](https://gcebolla.github.io/Cyclistic-Case-Study/Cyclistic_Output.html)
 
 ---
 
