@@ -39,9 +39,10 @@ To get started with this project, follow these steps:
    git clone https://github.com/yourusername/your-repository-name.git
    
 2. Install necessary R packages (if you don't have them already):
+   ```R
    install.packages(c("dplyr", "ggplot2", "RMarkdown", "tidyverse"))
-   
-3. Download the required data (if necessary) and place it in the corresponding folder within the repository.
+
+4. Download the required data (if necessary) and place it in the corresponding folder within the repository.
 
 ## How to Run the Analysis
 1. Open the repository folder in RStudio.
@@ -51,6 +52,7 @@ To get started with this project, follow these steps:
 3. Knit the RMarkdown file to generate the HTML output of the case study.
 
 - Click the Knit button in RStudio or run the following command in R:
+  ```R
   rmarkdown::render("case_study.Rmd")
   
 4. This will generate the case_study_output.html file, which includes the analysis results and visualizations.
