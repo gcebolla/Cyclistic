@@ -82,6 +82,6 @@ See the [LICENSE](LICENSE) file for more details.
 ---
 
 ## **Acknowledgments**  
-- **Data Provider:** Cyclistic Bike-Share (Divvy).  
+- **Data Provider:** Cyclistic (Divvy).  
 - **Tools Used:** R, ggplot2, SQL, RMarkdown.  
 - **Special Thanks:** To the creators of open-source tools and libraries that made this analysis possible. 
