@@ -53,7 +53,7 @@ To set up this project, follow these steps:
    install.packages(c("dplyr", "ggplot2", "tidyverse"))
    ```
 3. **Download the dataset:**  
-   - Obtain **Cyclistic_12.csv** from the provided link.  
+   - Download **Cyclistic_12.csv**.  
    - Place it in the appropriate folder within the repository.  
 
 ---
