@@ -58,6 +58,12 @@ To set up this project, follow these steps:
 
 ---
 
+# Open the RStudio and set the working directory to where the repository is saved on your computer:
+# Replace "path/to/your/repository/folder" with the actual path where the repository is located on your machine.
+setwd("path/to/your/repository/folder")  # Example: setwd("C:/Users/YourUsername/Documents/Cyclistic")
+
+---
+
 ## **How to Run the Analysis**  
 1. Open the repository folder in **RStudio**.  
 2. Open the **Cyclistic.Rmd** file.  
