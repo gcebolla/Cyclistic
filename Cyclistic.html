@@ -2193,15 +2193,18 @@ sapply(libs, library, character.only = T, logical.return = T,
 files could be easily accessed and saved.</p>
 <div id="code-chunk-3-1-2" class="section level4">
 <h4>Code Chunk 3-1-2:</h4>
-<pre class="r"><code>setwd(&quot;~/R/Cyclistic&quot;)       </code></pre>
-</div>
-</div>
-<div id="loading-data" class="section level3">
-<h3>3-1-3: Loading Data</h3>
-<p>I then loaded the previous CSV file I made in SQL.</p>
-<div id="code-chunk-3-1-3" class="section level4">
-<h4>Code Chunk 3-1-3:</h4>
-<pre class="r"><code>cyclistic &lt;- read.csv(&quot;cyclistic_12.csv&quot;)</code></pre>
+<pre class="r"><code># Set the working directory to the folder where your repository is located
+setwd(&quot;~/R/Cyclistic&quot;)       </code></pre>
+<pre><code>
+### 3-1-3: Loading Data
+
+I then loaded the previous CSV file I made in SQL.
+
+#### Code Chunk 3-1-3:
+
+
+``` r
+cyclistic &lt;- read.csv(&quot;cyclistic_12.csv&quot;)</code></pre>
 </div>
 </div>
 <div id="creating-factor-levels-for-plotting" class="section level3">
