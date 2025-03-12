@@ -56,11 +56,7 @@ To set up this project, follow these steps:
    ```r
    install.packages(c("dplyr", "ggplot2", "tidyverse"))
    ```
-4. **Download the dataset:**  
-   - Download **Cyclistic_12.csv**.  
-   - Place it in the appropriate folder within the repository.
-     
-5. **Det the working directory**
+4. **Set the working directory**
    - Replace "path/to/your/repository/folder" with the actual path where the repository is located on your machine.
    ```r
    setwd("path/to/your/repository/folder")
@@ -82,7 +78,7 @@ setwd("path/to/your/repository/folder")  # Example: setwd("C:/Users/YourUsername
      ```r
      rmarkdown::render("Cyclistic.Rmd")
      ```
-4. This will generate **Cyclistic_Output.html**, containing the analysis results and visualizations.  
+4. This will generate **Cyclistic.html**, containing the analysis results and visualizations.  
 
 ---
 
