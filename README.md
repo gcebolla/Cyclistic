@@ -41,11 +41,11 @@ This analysis explores customer usage trends to identify strategies for increasi
 ---
 
 ## **How to Run the Analysis**  
-1. **Clone the repository:**  
+1. Clone the repository: 
    ```bash
    git clone https://github.com/gcebolla/Cyclistic.git
    ```
-2. Open the repository folder in **RStudio**
+2. Navigate to the repository folder and open it in RStudio.
 3. Knit the RMarkdown file to generate the HTML output:  
    - Click the **Knit** button in RStudio.  
    - Or run the following command in R:  
