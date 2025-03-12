@@ -50,15 +50,15 @@ This analysis explores customer usage trends to identify strategies for increasi
    - Click the **Knit** button in RStudio.  
    - Or run the following command in R:  
      ```r
-     rmarkdown::render("Cyclistic.Rmd")
+     rmarkdown::render("cyclistic.Rmd")
      ```
- 4. This will generate **Cyclistic.html**, containing the analysis results and visualizations.
+ 4. This will generate **cyclistic.html**, containing the analysis results and visualizations.
 
 ---
 
 ## **Case Study Output**  
 You can view the case study **online** at:  
-📄 [View Case Study Output](https://gcebolla.github.io/Cyclistic-Case-Study/Cyclistic.html) *(GitHub Pages link – to be added once set up)*  
+📄 [View Case Study Output](https://gcebolla.github.io/Cyclistic-Case-Study/cyclistic.html) *(GitHub Pages link – to be added once set up)*  
 
 ---
 
