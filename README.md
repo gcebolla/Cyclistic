@@ -73,7 +73,7 @@ To set up this project, follow these steps:
 
 ## **Case Study Output**  
 You can view the case study **online** at:  
-📄 [View Case Study Output](https://gcebolla.github.io/Cyclistic-Case-Study/Cyclistic_Output.html) *(GitHub Pages link – to be added once set up)*  
+📄 [View Case Study Output](https://gcebolla.github.io/Cyclistic-Case-Study/Cyclistic.html) *(GitHub Pages link – to be added once set up)*  
 
 ---
 
