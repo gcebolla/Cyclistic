@@ -33,10 +33,10 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 ---
 
-## **Technologies Used**  
+## **Technologies Used** 
+- **RMarkdown** – Report generation and final HTML output. 
 - **SQL** – Data cleaning, transformation, and aggregation.  
-- **R** – Statistical analysis and data visualization.  
-- **RMarkdown** – Report generation and final HTML output.  
+- **R** – Statistical analysis and data visualization. 
 - **ggplot2** – Data visualization in R.  
 
 ---
