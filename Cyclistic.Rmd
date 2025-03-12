@@ -664,8 +664,6 @@ sapply(libs, library, character.only = T, logical.return = T,
 
 Next, I set up the working directory to ensure that the necessary files could be easily accessed and saved. 
 
-This step allows R to recognize where the data and script files are located.
-
 #### Code Chunk 3-1-2:
 
 ```{r, eval = FALSE}
