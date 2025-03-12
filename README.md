@@ -12,11 +12,10 @@ It demonstrates the end-to-end process of **cleaning, analyzing, and visualizing
 ## **Table of Contents**  
 1. [Description](#description)  
 2. [Technologies Used](#technologies-used)  
-3. [Installation Instructions](#installation-instructions)  
-4. [How to Run the Analysis](#how-to-run-the-analysis)  
-5. [Case Study Output](#case-study-output)  
-6. [License](#license)  
-7. [Acknowledgments](#acknowledgments)  
+3. [How to Run the Analysis](#how-to-run-the-analysis)   
+4. [Case Study Output](#case-study-output)  
+5. [License](#license)  
+6. [Acknowledgments](#acknowledgments)  
 
 ---
 
@@ -41,44 +40,19 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 ---
 
-## **Installation Instructions**  
-To set up this project, follow these steps:  
-
+## **How to Run the Analysis**  
 1. **Clone the repository:**  
    ```bash
    git clone https://github.com/gcebolla/Cyclistic.git
    ```
-2. **Download the dataset:**  
-   - Download **Cyclistic_12.csv**.  
-   - Place it in the appropriate folder within the repository.
-   
-3. **Install necessary R packages (if not already installed):**  
-   ```r
-   install.packages(c("dplyr", "ggplot2", "tidyverse"))
-   ```
-4. **Set the working directory**
-   - Replace "path/to/your/repository/folder" with the actual path where the repository is located on your machine.
-   ```r
-   setwd("path/to/your/repository/folder")
-   ```
----
-
- Open the RStudio and set the working directory to where the repository is saved on your computer:
-# Replace "path/to/your/repository/folder" with the actual path where the repository is located on your machine.
-setwd("path/to/your/repository/folder")  # Example: setwd("C:/Users/YourUsername/Documents/Cyclistic")
-
----
-
-## **How to Run the Analysis**  
-1. Open the repository folder in **RStudio**.  
-2. Open the **Cyclistic.Rmd** file.  
+2. Open the repository folder in **RStudio**
 3. Knit the RMarkdown file to generate the HTML output:  
    - Click the **Knit** button in RStudio.  
    - Or run the following command in R:  
      ```r
      rmarkdown::render("Cyclistic.Rmd")
      ```
-4. This will generate **Cyclistic.html**, containing the analysis results and visualizations.  
+ 4. This will generate **Cyclistic.html**, containing the analysis results and visualizations.
 
 ---
 
