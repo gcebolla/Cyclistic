@@ -46,7 +46,7 @@ To set up this project, follow these steps:
 
 1. **Clone the repository:**  
    ```bash
-   git clone https://github.com/gcebolla/Cyclistic-Case-Study.git
+   git clone https://github.com/gcebolla/Cyclistic.git
    ```
 2. **Install necessary R packages (if not already installed):**  
    ```r
