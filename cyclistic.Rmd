@@ -667,7 +667,7 @@ Next, I set up the working directory to ensure that the necessary files could be
 #### Code Chunk 3-1-2:
 
 ```{r, eval = FALSE}
-# Set the working directory to the folder where your repository is located
+# Set the working directory to the folder where your project files are located
 setwd("~/R/Cyclistic")       
 ```      
 
