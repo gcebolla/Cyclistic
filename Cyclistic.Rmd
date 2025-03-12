@@ -662,11 +662,14 @@ sapply(libs, library, character.only = T, logical.return = T,
 
 ### 3-1-2: Setting Working Directory
 
-Next, I set up the working directory to ensure that the necessary files could be easily accessed and saved.
+Next, I set up the working directory to ensure that the necessary files could be easily accessed and saved. 
+
+This step allows R to recognize where the data and script files are located.
 
 #### Code Chunk 3-1-2:
 
 ```{r, eval = FALSE}
+# Set the working directory to the folder where your repository is located
 setwd("~/R/Cyclistic")       
 ```
 
