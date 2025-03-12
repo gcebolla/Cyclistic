@@ -48,17 +48,26 @@ To set up this project, follow these steps:
    ```bash
    git clone https://github.com/gcebolla/Cyclistic.git
    ```
-2. **Install necessary R packages (if not already installed):**  
+2. **Download the dataset:**  
+   - Download **Cyclistic_12.csv**.  
+   - Place it in the appropriate folder within the repository.
+   
+3. **Install necessary R packages (if not already installed):**  
    ```r
    install.packages(c("dplyr", "ggplot2", "tidyverse"))
    ```
-3. **Download the dataset:**  
+4. **Download the dataset:**  
    - Download **Cyclistic_12.csv**.  
-   - Place it in the appropriate folder within the repository.  
-
+   - Place it in the appropriate folder within the repository.
+     
+5. **Det the working directory**
+   - Replace "path/to/your/repository/folder" with the actual path where the repository is located on your machine.
+   ```r
+   setwd("path/to/your/repository/folder")
+   ```
 ---
 
-# Open the RStudio and set the working directory to where the repository is saved on your computer:
+ Open the RStudio and set the working directory to where the repository is saved on your computer:
 # Replace "path/to/your/repository/folder" with the actual path where the repository is located on your machine.
 setwd("path/to/your/repository/folder")  # Example: setwd("C:/Users/YourUsername/Documents/Cyclistic")
 
