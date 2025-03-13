@@ -35,7 +35,7 @@ This analysis explores customer usage trends to identify strategies for increasi
 ## **Technologies Used** 
 - **RMarkdown**: Report generation and final HTML output. 
 - **SQL (Google BigQuery)**: Data cleaning, transformation, and aggregation.  
-- **R**: – Statistical analysis and data visualization.
+- **R**: Statistical analysis and data visualization.
 - **tidyverse**: For data manipulation and visualization.
 - **RColorBrewer**: For using color palettes in visualizations.
 - **gridExtra**: For arranging multiple visualizations in a grid.
