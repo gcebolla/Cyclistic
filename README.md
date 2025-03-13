@@ -45,7 +45,7 @@ This analysis explores customer usage trends to identify strategies for increasi
    ```bash
    git clone https://github.com/gcebolla/Cyclistic.git
    ```
-2. Navigate to the cloned repository folder and open [cyclistic.Rmd](https://github.com/gcebolla/Cyclistic/blob/main/data/cyclistic.Rmd) in **RStudio**.
+2. Navigate to the cloned repository folder and open [cyclistic.Rmd](https://github.com/gcebolla/Cyclistic/blob/main/cyclistic.Rmd) in **RStudio**.
 3. Knit the RMarkdown file to generate the HTML output:  
    - Click the **Knit** button in RStudio.  
    - Or run the following command in R:  
