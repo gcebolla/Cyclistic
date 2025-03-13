@@ -58,7 +58,7 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 ## **Final Report & Insights**
 You can view the case study online at:  
-📄 [View Case Study Output](https://gcebolla.github.io/Cyclistic-Case-Study/cyclistic.html) *(GitHub Pages link – to be added once set up)*  
+📄 [Final Report & Insights](https://gcebolla.github.io/Cyclistic-Case-Study/cyclistic.html) *(GitHub Pages link – to be added once set up)*  
 
 ---
 
