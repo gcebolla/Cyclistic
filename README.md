@@ -52,14 +52,14 @@ This analysis explores customer usage trends to identify strategies for increasi
      ```r
      rmarkdown::render("cyclistic.Rmd")
      ```
- 4. This will generate [cyclistic.html](https://github.com/gcebolla/Cyclistic/blob/main/data/cyclistic.html), containing the analysis results and visualizations.
+ 4. This will generate [cyclistic.html](https://github.com/gcebolla/Cyclistic/blob/main/cyclistic.html), containing the analysis results and visualizations.
 
 ---
 
 ## **Final Report & Insights**
 You can view the case study online at:  
-- [View Final Report & Insights](https://gcebolla.github.io/Cyclistic-Case-Study/cyclistic.html)
-- Alternatively, you can download and open [cyclistic.html](https://github.com/gcebolla/Cyclistic/blob/main/data/cyclistic.html) in a browser.
+- [View Final Report & Insights](https://gcebolla.github.io/Cyclistic/cyclistic.html)
+- Alternatively, you can download and open [cyclistic.html](https://github.com/gcebolla/Cyclistic/blob/main/cyclistic.html) in a browser.
 ---
 
 ## **License**  
