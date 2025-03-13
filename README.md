@@ -28,15 +28,17 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 - The dataset includes 12 months of ride history (Nov 2023 – Oct 2024), comprising millions of ride records. The data is publicly available under a data-sharing agreement: [Divvy Data](https://divvy-tripdata.s3.amazonaws.com/index.html).
 
-- **Note:** This dataset does not contain personally identifiable information (PII).  
+- **Note**: This dataset does not contain personally identifiable information (PII).  
 
 ---
 
 ## **Technologies Used** 
-- **RMarkdown** – Report generation and final HTML output. 
-- **SQL (Google BigQuery)** – Data cleaning, transformation, and aggregation.  
-- **R** – Statistical analysis and data visualization. 
-- **ggplot2** – Data visualization in R.  
+- **RMarkdown**: Report generation and final HTML output. 
+- **SQL (Google BigQuery)**: Data cleaning, transformation, and aggregation.  
+- **R**: – Statistical analysis and data visualization.
+- **tidyverse**: For data manipulation and visualization.
+- **RColorBrewer**: For using color palettes in visualizations.
+- **gridExtra**: For arranging multiple visualizations in a grid.
 
 ---
 
@@ -63,13 +65,13 @@ You can view the case study online at:
 ---
 
 ## **License**  
-- **Data License:** The dataset is provided by **Motivate International Inc.**, under this [license.](https://divvybikes.com/data-license-agreement).
-- **Project License:** This repository is licensed under **Creative Commons Attribution 4.0 International (CC BY 4.0)**.  
+- **Data License**: The dataset is provided by **Motivate International Inc.**, under this [license.](https://divvybikes.com/data-license-agreement).
+- **Project License**: This repository is licensed under **Creative Commons Attribution 4.0 International (CC BY 4.0)**.  
 See the [LICENSE](LICENSE) file for more details.  
 
 ---
 
 ## **Acknowledgments**  
-- **Data Provider:** Motivate International Inc. (Divvy).  
-- **Tools Used:** R, ggplot2, SQL, RMarkdown.  
-- **Special Thanks:** To the creators of open-source tools and libraries that made this analysis possible.
+- **Data Provider**: Motivate International Inc. (Divvy).  
+- **Tools Used**: R, tidyverse, RColorBrewer, gridExtra, SQL, RMarkdown.  
+- **Special Thanks**: To the creators of open-source tools and libraries that made this analysis possible.
