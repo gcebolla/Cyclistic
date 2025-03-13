@@ -56,7 +56,7 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 ## **Final Report & Insights**
 You can view the case study online at:  
-- [View Final Report & Insights](https://gcebolla.github.io/Cyclistic/cyclistic.html)
+- [View Final Report & Insights](https://gcebolla.github.io/Cyclistic/cyclistic.html) – This report contains the complete analysis, including insights drawn from the data, visualizations, and actionable recommendations for converting casual riders to members.
 - Alternatively, you can download and open [cyclistic.html](https://github.com/gcebolla/Cyclistic/blob/main/cyclistic.html) in a browser.
 
 ---
