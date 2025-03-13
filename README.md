@@ -3,7 +3,7 @@
 ## **Overview**  
 This repository contains a data analysis case study focused on customer usage patterns and strategies to convert casual riders into members. The analysis utilizes **SQL** for data cleaning, aggregation, and exploration, and **R** for analysis, visualization, and generating insights.  
 
-This is the capstone project for the Google Data Analytics Certificate, showcasing skills in SQL, R, data visualization, and business problem-solving.
+This is the capstone project for the **Google Data Analytics Certificate**, showcasing skills in SQL, R, data visualization, and business problem-solving.
 
 It demonstrates the end-to-end process of cleaning, analyzing, and visualizing data to derive actionable business recommendations.
 
