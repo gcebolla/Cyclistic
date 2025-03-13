@@ -21,13 +21,9 @@ It demonstrates the end-to-end process of cleaning, analyzing, and visualizing d
 
 ## **Description**  
 This analysis explores customer usage trends to identify strategies for increasing member subscriptions.  
-
 - **Cyclistic** is a fictional company based on real-world data from **Divvy**, a Chicago-based bike-share company.  
-
 - The Director of Marketing believes that increasing annual memberships is crucial for the company's long-term success. Since annual members generate higher revenue than casual riders, this study aims to uncover key insights and provide three actionable recommendations to encourage casual riders to become members.  
-
 - The dataset includes 12 months of ride history (Nov 2023 – Oct 2024), comprising millions of ride records. The data is publicly available under a data-sharing agreement: [Divvy Data](https://divvy-tripdata.s3.amazonaws.com/index.html).
-
 - **Note**: This dataset does not contain personally identifiable information (PII).  
 
 ---
@@ -62,6 +58,7 @@ This analysis explores customer usage trends to identify strategies for increasi
 You can view the case study online at:  
 - [View Final Report & Insights](https://gcebolla.github.io/Cyclistic/cyclistic.html)
 - Alternatively, you can download and open [cyclistic.html](https://github.com/gcebolla/Cyclistic/blob/main/cyclistic.html) in a browser.
+
 ---
 
 ## **License**  
