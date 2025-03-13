@@ -26,7 +26,7 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 - The Director of Marketing believes that increasing annual memberships is crucial for the company's long-term success. Since annual members generate higher revenue than casual riders, this study aims to uncover key insights and provide three actionable recommendations to encourage casual riders to become members.  
 
-- The dataset includes 12 months of ride history (Nov 2023 – Oct 2024), comprising millions of ride records. The data, provided by **Motivate International Inc.**, is publicly available under a data-sharing agreement: [Divvy Data](https://divvy-tripdata.s3.amazonaws.com/index.html) under this [license.](https://divvybikes.com/data-license-agreement).
+- The dataset includes 12 months of ride history (Nov 2023 – Oct 2024), comprising millions of ride records. The data is publicly available under a data-sharing agreement: [Divvy Data](https://divvy-tripdata.s3.amazonaws.com/index.html).
 
 - **Note:** This dataset does not contain personally identifiable information (PII).  
 
@@ -63,7 +63,8 @@ You can view the case study online at:
 ---
 
 ## **License**  
-This repository is licensed under **Creative Commons Zero v1.0 Universal**.  
+- The data, provided by **Motivate International Inc.**, under this [license.](https://divvybikes.com/data-license-agreement).
+- This repository is licensed under **Creative Commons Zero v1.0 Universal**.  
 See the [LICENSE](LICENSE) file for more details.  
 
 ---
