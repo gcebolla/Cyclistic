@@ -63,8 +63,8 @@ You can view the case study online at:
 ---
 
 ## **License**  
-- The data, provided by **Motivate International Inc.**, under this [license.](https://divvybikes.com/data-license-agreement).
-- This repository is licensed under **Creative Commons Zero v1.0 Universal**.  
+- **Data License:** The dataset is provided by **Motivate International Inc.**, under this [license.](https://divvybikes.com/data-license-agreement).
+- **Project License:** This repository is licensed under **Creative Commons Zero v1.0 Universal**.  
 See the [LICENSE](LICENSE) file for more details.  
 
 ---
