@@ -13,7 +13,7 @@ It demonstrates the end-to-end process of cleaning, analyzing, and visualizing d
 1. [Description](#description)  
 2. [Technologies Used](#technologies-used)  
 3. [How to Run the Analysis](#how-to-run-the-analysis)   
-4. [Final Report & Insights](#final-report-&-insights)  
+4. [Final Report & Insights](#final-report-insights)  
 5. [License](#license)  
 6. [Acknowledgments](#acknowledgments)  
 
