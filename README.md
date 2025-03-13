@@ -73,5 +73,5 @@ See the [LICENSE](LICENSE) file for more details.
 
 ## **Acknowledgments**  
 - **Data Provider**: Motivate International Inc. (Divvy).  
-- **Tools Used**: R, tidyverse, RColorBrewer, gridExtra, SQL, RMarkdown.  
+- **Tools Used**: RMarkdown, SQL, R, tidyverse, RColorBrewer, gridExtra.  
 - **Special Thanks**: To the creators of open-source tools and libraries that made this analysis possible.
