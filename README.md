@@ -58,7 +58,7 @@ This analysis explores customer usage trends to identify strategies for increasi
 
 ## **Final Report & Insights**
 You can view the case study online at:  
-📄 [Final Report & Insights](https://gcebolla.github.io/Cyclistic-Case-Study/cyclistic.html) *(GitHub Pages link – to be added once set up)*  
+[Final Report & Insights](https://gcebolla.github.io/Cyclistic-Case-Study/cyclistic.html) *(GitHub Pages link – to be added once set up)*  
 
 ---
 
@@ -72,4 +72,4 @@ See the [LICENSE](LICENSE) file for more details.
 ## **Acknowledgments**  
 - **Data Provider:** Motivate International Inc. (Divvy).  
 - **Tools Used:** R, ggplot2, SQL, RMarkdown.  
-- **Special Thanks:** To the creators of open-source tools and libraries that made this analysis possible. 
+- **Special Thanks:** To the creators of open-source tools and libraries that made this analysis possible.
