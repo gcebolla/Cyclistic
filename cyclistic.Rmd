@@ -1818,7 +1818,6 @@ ggplot(
     labels = c("Casual", "Member")
   ) +
   guides(linetype = "none")
-
 ```
 
 For member riders, the average ride duration over the past 12 months remained consistent, typically ranging from 11 to 14 minutes.
