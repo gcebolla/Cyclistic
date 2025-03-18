@@ -762,7 +762,7 @@ print(cyclistic_total_rides_by_month)
 
 #### Code Chunk 3-2-1-2: {#3212}
 
-```{r Chart-3.2.1.2, fig.align= "center", fig.width = 8, fig.height = 4.5}
+```{r, fig.align= "center", fig.width = 8, fig.height = 4.5}
 ggplot(
   cyclistic_total_rides_by_month,
   aes(
